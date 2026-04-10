@@ -2,10 +2,10 @@
 import json
 from pathlib import Path
 
-JSONL = Path(
-    "/home/thesobercoder/.claude/projects/-home-thesobercoder-projects-hotwire/f4a57e34-d601-4e8a-9196-e9f7af286fe7.jsonl"
-)
-OUT = Path("/home/thesobercoder/projects/hotwire/.plan/openwork-interview-claude.md")
+REPO_ROOT = Path(__file__).resolve().parent.parent
+PROJECTS_DIR = Path.home() / ".claude/projects" / ("-" + str(REPO_ROOT).replace("/", "-").lstrip("-"))
+JSONL = max(PROJECTS_DIR.glob("*.jsonl"), key=lambda p: p.stat().st_mtime)
+OUT = Path(__file__).resolve().parent / "openwork-interview-claude.md"
 
 
 def ascii_clean(s: str) -> str:

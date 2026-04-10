@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import json
 import sqlite3
+from pathlib import Path
 
-DB = "/home/thesobercoder/.local/share/opencode/opencode.db"
+DB = Path.home() / ".local/share/opencode/opencode.db"
 SESSION_ID = "ses_293fd4bd9ffenS0NMAc1veaft6"
-OUT = "/home/thesobercoder/projects/hotwire/.plan/openwork-interview-condensed.md"
+OUT = Path(__file__).resolve().parent / "openwork-interview-condensed.md"
 
-con = sqlite3.connect(DB)
+con = sqlite3.connect(str(DB))
 con.row_factory = sqlite3.Row
 
 msgs = con.execute(
