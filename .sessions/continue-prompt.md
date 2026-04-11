@@ -131,7 +131,7 @@ The PRD must surface these gates in a dedicated "Performance" section and list t
 ## Reference projects for implementation details
 
 - `~/projects/opencode` — follow exactly for message schema, compaction, credential storage, file tool semantics, system prompt structure
-- `RhysSullivan/executor` (GitHub, research via `gh api` or `opensrc` skill) — code-mode pattern for `run_script`, Proxy-based tool injection, IPC message shapes, 40-line worker script
+- `~/projects/executor` — local clone of `RhysSullivan/executor`. Primary reference for the code-mode pattern in `run_script`: Proxy-based tool injection, IPC message shapes, ~40-line worker script, `{result, logs, error?}` return shape. Read the local copy directly — do not fetch from GitHub.
 - `vercel-labs/skills` CLI — skill install/discovery flow, `skills find` API shape
 - Vercel AI SDK — agent orchestration, MCP client (`experimental_createMCPClient`), provider abstraction, attachment part encoding via `convertToModelMessages`
 
