@@ -8,7 +8,8 @@ Read every transcript under `.sessions/` in full before drafting a single line o
 
 1. `.sessions/ses_293fd4bd9ffenS0NMAc1veaft6.md` — original opencode grilling session, Q1–Q339 (810 messages). Foundation of the architecture, but **several early decisions were reversed later**. Do not treat it as authoritative for runtime, sandbox, credentials, or tool surface; those settled differently in the Claude Code sessions.
 2. `.sessions/60cd91f7-4fbd-4285-9cb1-070187ff1acc.md` — first Claude Code continuation, Q340–Q499 (409 messages). Where the Deno sandbox, code-mode executor pattern, and opencode-aligned message/credential storage got locked in.
-3. `.sessions/a9585b69-fd47-4ea6-bf6c-a1642ed72e70.md` — second Claude Code continuation, Q501–Q553 plus Linux→Mac build discussion (159 messages). Resolves all 7 remaining pillars from the prior resume prompt, adds an 11th tool (`skill`), locks run_script's `{result, logs, error?}` shape, and pins the `~/.hotwire` directory layout.
+3. `.sessions/c41fb943-8b3c-41f5-a3b7-1a8d9e6d816e.md` — second Claude Code continuation, Q500 (auto-update release feed, deferred to ship time) plus Q501 initial shape (85 messages). Also contains session-dump skill/tooling detours — ignore those for PRD purposes.
+4. `.sessions/a9585b69-fd47-4ea6-bf6c-a1642ed72e70.md` — third Claude Code continuation, Q501 re-lock through Q553 plus Linux→Mac build discussion (159 messages). Resolves all 7 remaining pillars from the prior resume prompt, adds an 11th tool (`skill`), locks run_script's `{result, logs, error?}` shape, and pins the `~/.hotwire` directory layout.
 
 **When decisions conflict, the later transcript wins.** The following list of overrides is non-exhaustive:
 
@@ -117,6 +118,7 @@ Read-only summary for the PRD author. Every item below is backed by one or more 
    cd /home/thesobercoder/projects/hotwire
    python3 ~/.claude/skills/session-dump/scripts/export_claude_session.py .sessions \
      60cd91f7-4fbd-4285-9cb1-070187ff1acc \
+     c41fb943-8b3c-41f5-a3b7-1a8d9e6d816e \
      a9585b69-fd47-4ea6-bf6c-a1642ed72e70
    python3 ~/.claude/skills/session-dump/scripts/export_opencode_session.py .sessions \
      ses_293fd4bd9ffenS0NMAc1veaft6
