@@ -93,6 +93,41 @@ Read-only summary for the PRD author. Every item below is backed by one or more 
 - **First launch (fresh install)**: empty chat shell, inline banner above composer — "Add a provider to get started → [Open Settings]". "New" button disabled until at least one provider configured (tooltip "Add a provider first"). No welcome screen, no wizard, no auto-created initial session.
 - **Build and test workflow**: develop on Linux, cross-build for all three platforms via `electron-builder --mac --arm64 --dir` / `--linux` / `--win`. Apple Silicon bundles must be ad-hoc signed via `rcodesign sign` from Linux to pass `amfid` kernel check. `.app` bundle directly rsynced to test Mac, no `.dmg` needed for testing. Quarantine attribute stripping via `xattr -dr com.apple.quarantine` when needed. Apple Developer ID, Windows Azure Trusted Signing / SignPath.io Foundation, and full distribution signing all **deferred to ship time**.
 
+## Tech stack and performance gates (post-grilling addendum)
+
+Added after the grilling transcripts. These are **locked** — treat them the same as any transcript decision when drafting the PRD.
+
+### Stack
+
+- **Shell**: Electron (already locked in grilling).
+- **Monorepo**: pnpm workspaces + **Turborepo** for task running/caching. Multiple packages so each can be tested independently. (Turbo**pack** — Vercel's bundler — is explicitly **not** used; it is a different tool and is Next.js-tied.)
+- **Package manager**: **pnpm** only. Use pnpm's native `catalog:` feature in `pnpm-workspace.yaml` to pin every external dependency version once at the workspace level. Every package.json references external deps as `"react": "catalog:"` — no direct version strings in individual package manifests. One bump updates everywhere.
+- **UI framework**: React + **TanStack** ecosystem. Concretely:
+  - **TanStack Router** — v1 routing inside the renderer
+  - **TanStack Query** — server-state cache for provider calls, session loads, MCP discovery
+  - **TanStack Virtual** — non-negotiable for the message list and any long scroll surface; required to hit the performance gates below
+  - **TanStack Table** — only if Settings grids get dense enough to need it
+  - **TanStack Start is explicitly out** — it is SSR/server-first and not Electron-native
+- **Language**: TypeScript with `"strict": true` + `noUncheckedIndexedAccess`. Strictness is a feature, not friction.
+- **Lint/format**: ESLint (flat config) + Prettier defaults. Standard industry setup. Code quality is non-negotiable.
+- **Build/type check**: whatever Turborepo pipelines standard-practice dictate (`tsc --noEmit` for type check per package, bundler of choice for renderer/main, electron-builder for final packaging as already locked in grilling).
+
+### Performance gates (hard acceptance criteria)
+
+Performance is the north star of this project. A regression on any of the following **blocks ship** — not a warning, not a nice-to-have. The app must feel instant. No animations are required, and their absence is a deliberate choice that aids these gates; do not add animations to mask latency.
+
+1. **Session switch** — main-thread work from click to first paint of the target session's message list: **< 16ms**.
+2. **Message list scroll** — virtualized via TanStack Virtual. Any single row render: **< 8ms**. A 10,000-message session must scroll at a sustained **60fps** on the reference hardware.
+3. **Composer keystroke latency** — input event to painted character: **< 16ms**, even with a 500-message session mounted behind the composer.
+4. **Settings open** — modal/panel first paint: **< 100ms cold**, **< 16ms warm**.
+5. **Cold startup** — main window interactive (able to accept input, session list rendered): **< 1.5s** on reference hardware.
+6. **Idle CPU** — **< 1%** when no session is running. No polling loops, no background ticks that cost measurable CPU.
+7. **Memory ceiling** — **< 300 MB RSS** with 5 empty sessions open.
+
+Reference hardware for gates 5 and 7: **2020 Apple M1 / Intel i5 8th gen class, 16 GB RAM**. Worse hardware is best-effort; better hardware must exceed these numbers.
+
+The PRD must surface these gates in a dedicated "Performance" section and list them as acceptance criteria, not aspirations.
+
 ## Reference projects for implementation details
 
 - `~/projects/opencode` — follow exactly for message schema, compaction, credential storage, file tool semantics, system prompt structure
