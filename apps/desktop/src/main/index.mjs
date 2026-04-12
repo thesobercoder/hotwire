@@ -1,5 +1,7 @@
 import { app, BrowserWindow } from "electron";
 
+import { initializeAppData } from "./app-data.mjs";
+
 const rendererUrl = process.env.HOTWIRE_RENDERER_URL;
 
 function createMainWindow() {
@@ -29,6 +31,10 @@ function createMainWindow() {
 }
 
 app.whenReady().then(() => {
+  initializeAppData({
+    homeDir: app.getPath("home"),
+  });
+
   createMainWindow();
 
   app.on("activate", () => {
