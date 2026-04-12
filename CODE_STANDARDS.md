@@ -63,6 +63,25 @@ Strict mode is non-negotiable. `strict: true` and `noUncheckedIndexedAccess: tru
 
 All Node.js built-in imports must use the `node:` prefix. Use `import { join } from "node:path"`, never `import { join } from "path"`.
 
+## Import grouping
+
+Imports are separated into four groups by a blank line, in this order:
+
+1. `node:` builtins
+2. External packages
+3. Workspace packages (`@hotwire/*`)
+4. Relative imports
+
+```ts
+import { join } from "node:path";
+
+import { app, BrowserWindow } from "electron";
+
+import { initializeAppData } from "@hotwire/db";
+
+import { createMainWindow } from "./window.js";
+```
+
 ## No native modules
 
 No FFI. No native Node addons. No packages that require native compilation to function (e.g. `better-sqlite3`, `sharp`, `keytar`). Use only pure JS/TS or WASM-based alternatives.
