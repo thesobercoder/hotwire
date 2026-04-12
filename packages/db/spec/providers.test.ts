@@ -4,7 +4,13 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { initializeAppData } from "../src/app-data.js";
-import { insertProvider, listModels, listProviders, removeProvider, setModelEnabled } from "../src/providers.js";
+import {
+  insertProvider,
+  listModels,
+  listProviders,
+  removeProvider,
+  setModelEnabled,
+} from "../src/providers.js";
 
 function createTestDb() {
   const homeDir = mkdtempSync(join(tmpdir(), "hotwire-providers-"));
