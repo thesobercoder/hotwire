@@ -25,7 +25,12 @@ function ShellRoute() {
   return (
     <section>
       <h1>Hotwire</h1>
-      <p>Electron + React shell ready.</p>
+      <p>Add a provider to get started.</p>
+      <span title="Add a provider to enable new sessions">
+        <button disabled type="button">
+          New
+        </button>
+      </span>
     </section>
   );
 }

@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 import { createTestRouter } from "./router";
 
 describe("App", () => {
-  it("renders initial Hotwire shell through TanStack Router", async () => {
+  it("renders the first-launch shell with a gated new-session action", async () => {
     const router = createTestRouter();
 
     render(<RouterProvider router={router} />);
@@ -12,6 +12,14 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: /hotwire/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/electron \+ react shell/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/add a provider to get started/i),
+    ).toBeInTheDocument();
+
+    const newButton = screen.getByRole("button", { name: /^new$/i });
+    expect(newButton).toBeDisabled();
+    expect(
+      screen.getByTitle(/add a provider to enable new sessions/i),
+    ).toBeInTheDocument();
   });
 });
