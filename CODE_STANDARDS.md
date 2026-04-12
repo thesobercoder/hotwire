@@ -59,6 +59,10 @@ ESM only. Every package uses `"type": "module"`. No CommonJS.
 
 Strict mode is non-negotiable. `strict: true` and `noUncheckedIndexedAccess: true` in all tsconfig files.
 
+## Node imports
+
+All Node.js built-in imports must use the `node:` prefix. Use `import { join } from "node:path"`, never `import { join } from "path"`.
+
 ## No native modules
 
 No FFI. No native Node addons. No packages that require native compilation to function (e.g. `better-sqlite3`, `sharp`, `keytar`). Use only pure JS/TS or WASM-based alternatives.
