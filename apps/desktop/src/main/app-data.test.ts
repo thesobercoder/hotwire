@@ -5,8 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-// @ts-expect-error app-data.mjs is a runtime-only ESM helper.
-import { initializeAppData } from "./app-data.mjs";
+import { initializeAppData } from "./app-data.js";
 
 describe("initializeAppData", () => {
   it("creates the app directory, initializes hotwire.db, and applies migration 1", () => {

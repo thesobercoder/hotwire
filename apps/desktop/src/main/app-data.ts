@@ -6,7 +6,7 @@ const APP_DIRECTORY_NAME = ".hotwire";
 const DATABASE_FILE_NAME = "hotwire.db";
 const CURRENT_SCHEMA_VERSION = 2;
 
-export function initializeAppData({ homeDir }) {
+export function initializeAppData({ homeDir }: { homeDir: string }) {
   const appDataPath = join(homeDir, APP_DIRECTORY_NAME);
   const dbPath = join(appDataPath, DATABASE_FILE_NAME);
 
@@ -25,9 +25,12 @@ export function initializeAppData({ homeDir }) {
     INSERT OR IGNORE INTO schema_migrations(version) VALUES (1);
   `);
 
-  const currentVersion = /** @type {Array<{user_version: number}>} */ (
-    database.prepare("PRAGMA user_version").all()
-  )[0]?.user_version ?? 0;
+  const currentVersion =
+    (
+      database.prepare("PRAGMA user_version").all() as Array<{
+        user_version: number;
+      }>
+    )[0]?.user_version ?? 0;
 
   if (currentVersion < 2) {
     database.exec(`

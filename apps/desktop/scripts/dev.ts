@@ -2,14 +2,28 @@ import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
+import { build } from "esbuild";
 import { createServer } from "vite";
 
 const require = createRequire(import.meta.url);
-const electronBinary = require("electron");
+const electronBinary = require("electron") as string;
 const mainEntry = fileURLToPath(
-  new URL("../src/main/index.mjs", import.meta.url),
+  new URL("../src/main/index.ts", import.meta.url),
+);
+const mainOut = fileURLToPath(
+  new URL("../dist/main/index.mjs", import.meta.url),
 );
 const viteConfig = fileURLToPath(new URL("../vite.config.ts", import.meta.url));
+
+await build({
+  entryPoints: [mainEntry],
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  outfile: mainOut,
+  external: ["electron"],
+  sourcemap: true,
+});
 
 const server = await createServer({
   configFile: viteConfig,
@@ -19,7 +33,7 @@ await server.listen();
 
 const rendererUrl = server.resolvedUrls?.local[0] ?? "http://127.0.0.1:5173";
 
-const electronProcess = spawn(electronBinary, [mainEntry], {
+const electronProcess = spawn(electronBinary, [mainOut], {
   stdio: "inherit",
   env: {
     ...process.env,

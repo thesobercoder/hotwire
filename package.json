@@ -9,6 +9,11 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
   "devDependencies": {
     "@eslint/js": "catalog:",
     "eslint": "catalog:",

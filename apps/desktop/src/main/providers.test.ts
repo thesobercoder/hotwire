@@ -5,10 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-// @ts-expect-error app-data.mjs is a runtime-only ESM helper.
-import { initializeAppData } from "./app-data.mjs";
-// @ts-expect-error providers.mjs is a runtime-only ESM helper.
-import { insertProvider, listModels, listProviders, removeProvider, setModelEnabled } from "./providers.mjs";
+import { initializeAppData } from "./app-data.js";
+import { insertProvider, listModels, listProviders, removeProvider, setModelEnabled } from "./providers.js";
 
 function createTestDb() {
   const homeDir = mkdtempSync(join(tmpdir(), "hotwire-providers-"));
@@ -36,7 +34,7 @@ describe("providers", () => {
       type: "anthropic",
       api_key: "sk-ant-test-key",
     });
-    expect(providers[0].created_at).toBeDefined();
+    expect(providers[0]?.created_at).toBeDefined();
 
     db.close();
   });
