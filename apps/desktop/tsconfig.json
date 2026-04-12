@@ -10,6 +10,8 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
+    "spec/**/*.ts",
+    "spec/**/*.tsx",
     "vite.config.ts",
     "vitest.setup.ts"
   ]

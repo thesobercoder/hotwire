@@ -1,7 +1,7 @@
 import { RouterProvider } from "@tanstack/react-router";
 import { render, screen } from "@testing-library/react";
 
-import { createTestRouter } from "./router";
+import { createTestRouter } from "../../src/renderer/router";
 
 describe("App", () => {
   it("renders the first-launch shell with a gated new-session action", async () => {

@@ -3,10 +3,23 @@ packages:
   - packages/*
 catalog:
   '@eslint/js': ^9.25.1
+  '@tanstack/react-router': ^1.132.0
+  '@testing-library/jest-dom': ^6.9.1
+  '@testing-library/react': ^16.3.2
+  '@types/react': ^19.2.14
+  '@types/react-dom': ^19.2.3
+  '@vitejs/plugin-react': ^6.0.1
+  electron: ^39.2.3
+  esbuild: ^0.28.0
   eslint: ^9.25.1
   globals: ^16.0.0
+  jsdom: ^29.0.2
   prettier: ^3.5.3
+  react: ^19.2.0
+  react-dom: ^19.2.0
+  tsx: ^4.21.0
   turbo: ^2.5.0
   typescript: ^5.8.3
   typescript-eslint: ^8.30.1
-onlyBuiltDependencies: '["esbuild"]'
+  vite: ^8.0.8
+  vitest: ^4.1.4
