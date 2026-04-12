@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 
 const APP_DIRECTORY_NAME = ".hotwire";
 const DATABASE_FILE_NAME = "hotwire.db";
-const INITIAL_SCHEMA_VERSION = 1;
+const CURRENT_SCHEMA_VERSION = 2;
 
 export function initializeAppData({ homeDir }) {
   const appDataPath = join(homeDir, APP_DIRECTORY_NAME);
@@ -22,9 +22,37 @@ export function initializeAppData({ homeDir }) {
       applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
-    INSERT OR IGNORE INTO schema_migrations(version) VALUES (${INITIAL_SCHEMA_VERSION});
-    PRAGMA user_version = ${INITIAL_SCHEMA_VERSION};
+    INSERT OR IGNORE INTO schema_migrations(version) VALUES (1);
   `);
+
+  const currentVersion = /** @type {Array<{user_version: number}>} */ (
+    database.prepare("PRAGMA user_version").all()
+  )[0]?.user_version ?? 0;
+
+  if (currentVersion < 2) {
+    database.exec(`
+      PRAGMA foreign_keys = ON;
+
+      CREATE TABLE IF NOT EXISTS providers (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        api_key TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS provider_models (
+        provider_id TEXT NOT NULL,
+        model_id TEXT NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (provider_id, model_id),
+        FOREIGN KEY (provider_id) REFERENCES providers(id) ON DELETE CASCADE
+      );
+
+      INSERT OR IGNORE INTO schema_migrations(version) VALUES (2);
+    `);
+  }
+
+  database.exec(`PRAGMA user_version = ${CURRENT_SCHEMA_VERSION}`);
   database.close();
 
   if (existsSync(dbPath)) {

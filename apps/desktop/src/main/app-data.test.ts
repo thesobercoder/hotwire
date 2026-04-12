@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { chmodSync, mkdtempSync, statSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -21,8 +21,73 @@ describe("initializeAppData", () => {
 
     expect(result.appDataPath).toBe(join(homeDir, ".hotwire"));
     expect(result.dbPath).toBe(join(homeDir, ".hotwire", "hotwire.db"));
-    expect(pragmaRows[0]?.user_version).toBe(1);
+    expect(pragmaRows[0]?.user_version).toBe(2);
     expect(stats.mode & 0o777).toBe(0o600);
+
+    database.close();
+  });
+
+  it("creates providers and provider_models tables in migration 2", () => {
+    const homeDir = mkdtempSync(join(tmpdir(), "hotwire-app-data-"));
+
+    const result = initializeAppData({ homeDir });
+    const database = new DatabaseSync(result.dbPath);
+
+    const tables = database
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('providers', 'provider_models') ORDER BY name",
+      )
+      .all() as Array<{ name: string }>;
+
+    expect(tables.map((t) => t.name)).toEqual(["provider_models", "providers"]);
+
+    const pragmaRows = database.prepare("PRAGMA user_version").all() as Array<{
+      user_version: number;
+    }>;
+    expect(pragmaRows[0]?.user_version).toBe(2);
+
+    const migrationRows = database
+      .prepare("SELECT version FROM schema_migrations ORDER BY version")
+      .all() as Array<{ version: number }>;
+    expect(migrationRows.map((r) => r.version)).toEqual([1, 2]);
+
+    database.close();
+  });
+
+  it("upgrades an existing v1 database to v2", () => {
+    const homeDir = mkdtempSync(join(tmpdir(), "hotwire-app-data-"));
+    const appDataPath = join(homeDir, ".hotwire");
+    const dbPath = join(appDataPath, "hotwire.db");
+    mkdirSync(appDataPath, { recursive: true });
+
+    // Simulate a v1 database
+    const db = new DatabaseSync(dbPath);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        version INTEGER PRIMARY KEY,
+        applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT OR IGNORE INTO schema_migrations(version) VALUES (1);
+      PRAGMA user_version = 1;
+    `);
+    db.close();
+
+    // Run init which should upgrade to v2
+    initializeAppData({ homeDir });
+
+    const database = new DatabaseSync(dbPath);
+    const tables = database
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('providers', 'provider_models') ORDER BY name",
+      )
+      .all() as Array<{ name: string }>;
+
+    expect(tables.map((t) => t.name)).toEqual(["provider_models", "providers"]);
+
+    const pragmaRows = database.prepare("PRAGMA user_version").all() as Array<{
+      user_version: number;
+    }>;
+    expect(pragmaRows[0]?.user_version).toBe(2);
 
     database.close();
   });
@@ -41,7 +106,7 @@ describe("initializeAppData", () => {
       .all() as Array<{ migration_count: number }>;
 
     expect(secondRun).toEqual(firstRun);
-    expect(migrationRows[0]?.migration_count).toBe(1);
+    expect(migrationRows[0]?.migration_count).toBe(2);
     expect(stats.mode & 0o777).toBe(0o600);
 
     database.close();
