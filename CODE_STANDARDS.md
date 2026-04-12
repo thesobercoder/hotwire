@@ -38,3 +38,23 @@ catalog:
   }
 }
 ```
+
+## Modules
+
+ESM only. Every package uses `"type": "module"`. No CommonJS.
+
+## TypeScript strictness
+
+Strict mode is non-negotiable. `strict: true` and `noUncheckedIndexedAccess: true` in all tsconfig files.
+
+## No native modules
+
+No FFI. No native Node addons. No packages that require native compilation to function (e.g. `better-sqlite3`, `sharp`, `keytar`). Use only pure JS/TS or WASM-based alternatives.
+
+## Testing
+
+Tests use real dependencies, not mocks. Database tests run against real sqlite (in-memory or tempfile). No mocking internal collaborators.
+
+## IDs
+
+All entity IDs are ULIDs — 26 characters, time-sortable, URL-safe.
