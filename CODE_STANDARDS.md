@@ -39,6 +39,18 @@ catalog:
 }
 ```
 
+## Monorepo modularity
+
+Domain logic belongs in isolated packages under `packages/`, not inside `apps/`. Each package has its own `src/`, `spec/`, `tsconfig.json`, and tests. Apps depend on packages via `workspace:` references and compose them — they do not contain domain logic themselves.
+
+```
+packages/
+  db/           # schema, migrations, CRUD
+  providers/    # provider adapters, credential storage
+apps/
+  desktop/      # Electron shell — wires packages together
+```
+
 ## Modules
 
 ESM only. Every package uses `"type": "module"`. No CommonJS.
