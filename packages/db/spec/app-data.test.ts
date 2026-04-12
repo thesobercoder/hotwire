@@ -1,11 +1,9 @@
-// @vitest-environment node
-
 import { chmodSync, mkdirSync, mkdtempSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-import { initializeAppData } from "../../src/main/app-data.js";
+import { initializeAppData } from "../src/app-data.js";
 
 describe("initializeAppData", () => {
   it("creates the app directory, initializes hotwire.db, and applies migration 1", () => {

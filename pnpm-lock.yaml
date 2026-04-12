@@ -18,6 +18,9 @@ catalogs:
     '@testing-library/react':
       specifier: ^16.3.2
       version: 16.3.2
+    '@types/node':
+      specifier: ^22.16.0
+      version: 22.19.17
     '@types/react':
       specifier: ^19.2.14
       version: 19.2.14
@@ -98,6 +101,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@hotwire/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@tanstack/react-router':
         specifier: 'catalog:'
         version: 1.168.18(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -138,6 +144,15 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 8.0.8(@types/node@22.19.17)(esbuild@0.28.0)(tsx@4.21.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@22.19.17)(jsdom@29.0.2)(vite@8.0.8(@types/node@22.19.17)(esbuild@0.28.0)(tsx@4.21.0))
+
+  packages/db:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.19.17
       vitest:
         specifier: 'catalog:'
         version: 4.1.4(@types/node@22.19.17)(jsdom@29.0.2)(vite@8.0.8(@types/node@22.19.17)(esbuild@0.28.0)(tsx@4.21.0))

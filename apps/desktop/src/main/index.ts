@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from "electron";
 
-import { initializeAppData } from "./app-data.js";
+import { initializeAppData } from "@hotwire/db";
 
 const rendererUrl = process.env.HOTWIRE_RENDERER_URL;
 

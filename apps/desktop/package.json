@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@hotwire/db": "workspace:*",
     "@tanstack/react-router": "catalog:",
     "electron": "catalog:",
     "react": "catalog:",

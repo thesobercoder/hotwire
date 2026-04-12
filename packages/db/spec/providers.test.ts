@@ -1,12 +1,10 @@
-// @vitest-environment node
-
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-import { initializeAppData } from "../../src/main/app-data.js";
-import { insertProvider, listModels, listProviders, removeProvider, setModelEnabled } from "../../src/main/providers.js";
+import { initializeAppData } from "../src/app-data.js";
+import { insertProvider, listModels, listProviders, removeProvider, setModelEnabled } from "../src/providers.js";
 
 function createTestDb() {
   const homeDir = mkdtempSync(join(tmpdir(), "hotwire-providers-"));
