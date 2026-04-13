@@ -57,7 +57,15 @@ function registerProviderHandlers(
     runSync(
       Effect.gen(function* () {
         const repo = yield* ProviderRepo;
-        yield* repo.insert({ id: ulid(), type, apiKey });
+        const id = ulid();
+        yield* repo.insert({ id, type, apiKey });
+        if (type === "anthropic") {
+          yield* repo.setModelEnabled({
+            providerId: id,
+            modelId: "claude-sonnet-4-20250514",
+            enabled: true,
+          });
+        }
       }),
     ),
   );
@@ -67,6 +75,15 @@ function registerProviderHandlers(
       Effect.gen(function* () {
         const repo = yield* ProviderRepo;
         yield* repo.remove(id);
+      }),
+    ),
+  );
+
+  ipcMain.handle("providers:hasEnabledModel", () =>
+    runSync(
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        return yield* repo.hasEnabledModel;
       }),
     ),
   );

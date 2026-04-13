@@ -14,6 +14,7 @@ function stubHotwireApi(overrides: Partial<Window["hotwire"]> = {}) {
       list: async () => [],
       save: async () => {},
       remove: async () => {},
+      hasEnabledModel: async () => false,
     },
     ...overrides,
   };
@@ -46,6 +47,7 @@ describe("Settings — Providers", () => {
       list: Effect.succeed([]),
       save: () => Effect.void,
       remove: () => Effect.void,
+      hasEnabledModel: Effect.succeed(false),
     });
 
     const router = createTestRouter("/settings");
@@ -80,6 +82,7 @@ describe("Settings — Providers", () => {
           removed.push(id);
           providers = [];
         }),
+      hasEnabledModel: Effect.succeed(false),
     });
 
     const router = createTestRouter("/settings");
@@ -114,6 +117,7 @@ describe("Settings — Providers", () => {
           ];
         }),
       remove: () => Effect.void,
+      hasEnabledModel: Effect.succeed(false),
     });
 
     const router = createTestRouter("/settings");

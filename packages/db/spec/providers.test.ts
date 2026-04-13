@@ -146,6 +146,75 @@ describe("ProviderRepo", () => {
     db.close();
   });
 
+  it("reports no enabled model when none exist", () => {
+    const { layer, db } = createTestLayer();
+
+    run(
+      layer,
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        const result = yield* repo.hasEnabledModel;
+        expect(result).toBe(false);
+      }),
+    );
+
+    db.close();
+  });
+
+  it("reports an enabled model after one is set", () => {
+    const { layer, db } = createTestLayer();
+
+    run(
+      layer,
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        yield* repo.insert({
+          id: "01JTEST000000000000000001",
+          type: "anthropic",
+          apiKey: "sk-ant-test-key",
+        });
+        yield* repo.setModelEnabled({
+          providerId: "01JTEST000000000000000001",
+          modelId: "claude-sonnet-4-20250514",
+          enabled: true,
+        });
+
+        const result = yield* repo.hasEnabledModel;
+        expect(result).toBe(true);
+      }),
+    );
+
+    db.close();
+  });
+
+  it("reports no enabled model after provider cascade delete", () => {
+    const { layer, db } = createTestLayer();
+
+    run(
+      layer,
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        yield* repo.insert({
+          id: "01JTEST000000000000000001",
+          type: "anthropic",
+          apiKey: "sk-ant-test-key",
+        });
+        yield* repo.setModelEnabled({
+          providerId: "01JTEST000000000000000001",
+          modelId: "claude-sonnet-4-20250514",
+          enabled: true,
+        });
+
+        yield* repo.remove("01JTEST000000000000000001");
+
+        const result = yield* repo.hasEnabledModel;
+        expect(result).toBe(false);
+      }),
+    );
+
+    db.close();
+  });
+
   it("toggles model enabled state in place", () => {
     const { layer, db } = createTestLayer();
 

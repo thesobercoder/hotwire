@@ -33,6 +33,7 @@ export class ProviderRepo extends Context.Tag("@hotwire/db/ProviderRepo")<
       apiKey: string;
     }) => Effect.Effect<void, DatabaseError>;
     readonly remove: (id: string) => Effect.Effect<void, DatabaseError>;
+    readonly hasEnabledModel: Effect.Effect<boolean, DatabaseError>;
     readonly setModelEnabled: (params: {
       providerId: string;
       modelId: string;
@@ -87,6 +88,18 @@ export const ProviderRepoLive = Layer.effect(
           },
           catch: (cause) => new DatabaseError({ cause }),
         }),
+
+      hasEnabledModel: Effect.try({
+        try: () => {
+          const row = db
+            .prepare(
+              "SELECT COUNT(*) as count FROM provider_models WHERE enabled = 1",
+            )
+            .get() as { count: number };
+          return row.count > 0;
+        },
+        catch: (cause) => new DatabaseError({ cause }),
+      }),
 
       setModelEnabled: ({ providerId, modelId, enabled }) =>
         Effect.try({

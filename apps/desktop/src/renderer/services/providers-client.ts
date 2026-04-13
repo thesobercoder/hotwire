@@ -19,6 +19,7 @@ export class ProvidersClient extends Context.Tag(
       apiKey: string,
     ) => Effect.Effect<void, ProvidersClientError>;
     readonly remove: (id: string) => Effect.Effect<void, ProvidersClientError>;
+    readonly hasEnabledModel: Effect.Effect<boolean, ProvidersClientError>;
   }
 >() {}
 
@@ -39,4 +40,9 @@ export const ProvidersClientLive = Layer.succeed(ProvidersClient, {
       try: () => window.hotwire.providers.remove(id),
       catch: (cause) => new ProvidersClientError({ cause }),
     }),
+
+  hasEnabledModel: Effect.tryPromise({
+    try: () => window.hotwire.providers.hasEnabledModel(),
+    catch: (cause) => new ProvidersClientError({ cause }),
+  }),
 });

@@ -5,6 +5,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  getRouteApi,
 } from "@tanstack/react-router";
 import { Effect } from "effect";
 
@@ -26,13 +27,21 @@ function AppFrame() {
   );
 }
 
+const shellApi = getRouteApi("/");
+
 function ShellRoute() {
+  const hasEnabledModel = shellApi.useLoaderData();
+
   return (
     <section>
       <h1>Hotwire</h1>
-      <p>Add a provider to get started.</p>
-      <span title="Add a provider to enable new sessions">
-        <button disabled type="button">
+      {hasEnabledModel ? null : <p>Add a provider to get started.</p>}
+      <span
+        title={
+          hasEnabledModel ? undefined : "Add a provider to enable new sessions"
+        }
+      >
+        <button disabled={!hasEnabledModel} type="button">
           New
         </button>
       </span>
@@ -47,6 +56,13 @@ const rootRoute = createRootRoute({
 const shellRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
+  loader: () =>
+    appRuntime.runPromise(
+      Effect.gen(function* () {
+        const client = yield* ProvidersClient;
+        return yield* client.hasEnabledModel;
+      }),
+    ),
   component: ShellRoute,
 });
 

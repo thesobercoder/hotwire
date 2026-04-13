@@ -13,6 +13,7 @@ export type ProvidersApi = {
   list(): Promise<Provider[]>;
   save(type: string, apiKey: string): Promise<void>;
   remove(id: string): Promise<void>;
+  hasEnabledModel(): Promise<boolean>;
 };
 
 export type HotwireApi = {
