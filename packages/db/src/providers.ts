@@ -1,6 +1,8 @@
+import { chmodSync } from "node:fs";
+
 import { Context, Data, Effect, Layer, Schema } from "effect";
 
-import { Database } from "./database.js";
+import { Database, DbFilePath } from "./database.js";
 
 export class DatabaseError extends Data.TaggedError("DatabaseError")<{
   readonly cause: unknown;
@@ -45,10 +47,13 @@ export class ProviderRepo extends Context.Tag("@hotwire/db/ProviderRepo")<
   }
 >() {}
 
+const enforceDbFileMode = (path: string) => chmodSync(path, 0o600);
+
 export const ProviderRepoLive = Layer.effect(
   ProviderRepo,
   Effect.gen(function* () {
     const db = yield* Database;
+    const dbFilePath = yield* DbFilePath;
 
     return {
       list: Effect.try({
@@ -77,6 +82,7 @@ export const ProviderRepoLive = Layer.effect(
             db.prepare(
               "INSERT INTO providers (id, type, api_key) VALUES (?, ?, ?)",
             ).run(id, type, apiKey);
+            enforceDbFileMode(dbFilePath);
           },
           catch: (cause) => new DatabaseError({ cause }),
         }),
@@ -85,6 +91,7 @@ export const ProviderRepoLive = Layer.effect(
         Effect.try({
           try: () => {
             db.prepare("DELETE FROM providers WHERE id = ?").run(id);
+            enforceDbFileMode(dbFilePath);
           },
           catch: (cause) => new DatabaseError({ cause }),
         }),
@@ -110,6 +117,7 @@ export const ProviderRepoLive = Layer.effect(
                ON CONFLICT (provider_id, model_id)
                DO UPDATE SET enabled = excluded.enabled`,
             ).run(providerId, modelId, enabled ? 1 : 0);
+            enforceDbFileMode(dbFilePath);
           },
           catch: (cause) => new DatabaseError({ cause }),
         }),

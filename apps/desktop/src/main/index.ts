@@ -6,6 +6,7 @@ import { ulid } from "ulidx";
 
 import {
   Database,
+  DbFilePath,
   initializeAppData,
   ProviderRepo,
   ProviderRepoLive,
@@ -100,7 +101,10 @@ app.whenReady().then(() => {
   db.exec("PRAGMA foreign_keys = ON");
 
   const DatabaseLive = Layer.succeed(Database, db);
-  const AppLayer = ProviderRepoLive.pipe(Layer.provide(DatabaseLive));
+  const DbFilePathLive = Layer.succeed(DbFilePath, dbPath);
+  const AppLayer = ProviderRepoLive.pipe(
+    Layer.provide(Layer.merge(DatabaseLive, DbFilePathLive)),
+  );
 
   const runSync = <A>(effect: Effect.Effect<A, unknown, ProviderRepo>) =>
     Effect.runSync(Effect.provide(effect, AppLayer));

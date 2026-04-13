@@ -1,5 +1,5 @@
 export { initializeAppData } from "./app-data.js";
-export { Database } from "./database.js";
+export { Database, DbFilePath } from "./database.js";
 export {
   DatabaseError,
   Provider,

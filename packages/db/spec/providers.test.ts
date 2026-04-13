@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { chmodSync, mkdtempSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -6,7 +6,7 @@ import { DatabaseSync } from "node:sqlite";
 import { Effect, Layer } from "effect";
 
 import { initializeAppData } from "../src/app-data.js";
-import { Database } from "../src/database.js";
+import { Database, DbFilePath } from "../src/database.js";
 import { ProviderRepo, ProviderRepoLive } from "../src/providers.js";
 
 function createTestLayer() {
@@ -15,7 +15,14 @@ function createTestLayer() {
   const db = new DatabaseSync(dbPath);
   db.exec("PRAGMA foreign_keys = ON");
   const DatabaseTest = Layer.succeed(Database, db);
-  return { layer: ProviderRepoLive.pipe(Layer.provide(DatabaseTest)), db };
+  const DbFilePathTest = Layer.succeed(DbFilePath, dbPath);
+  return {
+    layer: ProviderRepoLive.pipe(
+      Layer.provide(Layer.merge(DatabaseTest, DbFilePathTest)),
+    ),
+    db,
+    dbPath,
+  };
 }
 
 const run = <A>(
@@ -245,6 +252,60 @@ describe("ProviderRepo", () => {
         expect(models[0]?.enabled).toBe(true);
       }),
     );
+
+    db.close();
+  });
+
+  it("re-enforces 0600 file mode after credential insert", () => {
+    const { layer, db, dbPath } = createTestLayer();
+
+    chmodSync(dbPath, 0o644);
+
+    run(
+      layer,
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        yield* repo.insert({
+          id: "01JTEST000000000000000001",
+          type: "anthropic",
+          apiKey: "sk-ant-test-key",
+        });
+      }),
+    );
+
+    const stats = statSync(dbPath);
+    expect(stats.mode & 0o777).toBe(0o600);
+
+    db.close();
+  });
+
+  it("re-enforces 0600 file mode after credential remove", () => {
+    const { layer, db, dbPath } = createTestLayer();
+
+    run(
+      layer,
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        yield* repo.insert({
+          id: "01JTEST000000000000000001",
+          type: "anthropic",
+          apiKey: "sk-ant-test-key",
+        });
+      }),
+    );
+
+    chmodSync(dbPath, 0o644);
+
+    run(
+      layer,
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        yield* repo.remove("01JTEST000000000000000001");
+      }),
+    );
+
+    const stats = statSync(dbPath);
+    expect(stats.mode & 0o777).toBe(0o600);
 
     db.close();
   });
