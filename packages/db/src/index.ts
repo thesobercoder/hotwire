@@ -1,8 +1,9 @@
 export { initializeAppData } from "./app-data.js";
+export { Database } from "./database.js";
 export {
-  insertProvider,
-  removeProvider,
-  listProviders,
-  setModelEnabled,
-  listModels,
+  DatabaseError,
+  Provider,
+  ProviderModel,
+  ProviderRepo,
+  ProviderRepoLive,
 } from "./providers.js";

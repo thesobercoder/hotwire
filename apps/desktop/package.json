@@ -12,6 +12,7 @@
   "dependencies": {
     "@hotwire/db": "workspace:*",
     "@tanstack/react-router": "catalog:",
+    "effect": "catalog:",
     "electron": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

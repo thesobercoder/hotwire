@@ -3,13 +3,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+import { Effect } from "effect";
+
 import { initializeAppData } from "../src/app-data.js";
 
 describe("initializeAppData", () => {
   it("creates the app directory, initializes hotwire.db, and applies migration 1", () => {
     const homeDir = mkdtempSync(join(tmpdir(), "hotwire-app-data-"));
 
-    const result = initializeAppData({ homeDir });
+    const result = Effect.runSync(initializeAppData({ homeDir }));
     const stats = statSync(result.dbPath);
     const database = new DatabaseSync(result.dbPath);
     const pragmaRows = database.prepare("PRAGMA user_version").all() as Array<{
@@ -27,7 +29,7 @@ describe("initializeAppData", () => {
   it("creates providers and provider_models tables in migration 2", () => {
     const homeDir = mkdtempSync(join(tmpdir(), "hotwire-app-data-"));
 
-    const result = initializeAppData({ homeDir });
+    const result = Effect.runSync(initializeAppData({ homeDir }));
     const database = new DatabaseSync(result.dbPath);
 
     const tables = database
@@ -57,7 +59,6 @@ describe("initializeAppData", () => {
     const dbPath = join(appDataPath, "hotwire.db");
     mkdirSync(appDataPath, { recursive: true });
 
-    // Simulate a v1 database
     const db = new DatabaseSync(dbPath);
     db.exec(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -69,8 +70,7 @@ describe("initializeAppData", () => {
     `);
     db.close();
 
-    // Run init which should upgrade to v2
-    initializeAppData({ homeDir });
+    Effect.runSync(initializeAppData({ homeDir }));
 
     const database = new DatabaseSync(dbPath);
     const tables = database
@@ -91,11 +91,11 @@ describe("initializeAppData", () => {
 
   it("is safe to rerun and re-applies the locked database mode", () => {
     const homeDir = mkdtempSync(join(tmpdir(), "hotwire-app-data-"));
-    const firstRun = initializeAppData({ homeDir });
+    const firstRun = Effect.runSync(initializeAppData({ homeDir }));
 
     chmodSync(firstRun.dbPath, 0o644);
 
-    const secondRun = initializeAppData({ homeDir });
+    const secondRun = Effect.runSync(initializeAppData({ homeDir }));
     const stats = statSync(secondRun.dbPath);
     const database = new DatabaseSync(secondRun.dbPath);
     const migrationRows = database

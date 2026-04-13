@@ -1,13 +1,14 @@
 import { DatabaseSync } from "node:sqlite";
 
 import { app, BrowserWindow, ipcMain } from "electron";
+import { Effect, Layer } from "effect";
 import { ulid } from "ulidx";
 
 import {
+  Database,
   initializeAppData,
-  insertProvider,
-  listProviders,
-  removeProvider,
+  ProviderRepo,
+  ProviderRepoLive,
 } from "@hotwire/db";
 
 const rendererUrl = process.env.HOTWIRE_RENDERER_URL;
@@ -40,34 +41,54 @@ function createMainWindow() {
   return window;
 }
 
-function registerProviderHandlers(db: DatabaseSync) {
-  ipcMain.handle("providers:list", () => {
-    return listProviders(db).map((row) => ({
-      id: row.id,
-      type: row.type,
-      apiKey: row.api_key,
-      createdAt: row.created_at,
-    }));
-  });
+function registerProviderHandlers(
+  runSync: <A>(effect: Effect.Effect<A, unknown, ProviderRepo>) => A,
+) {
+  ipcMain.handle("providers:list", () =>
+    runSync(
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        return yield* repo.list;
+      }),
+    ),
+  );
 
-  ipcMain.handle("providers:save", (_event, type: string, apiKey: string) => {
-    insertProvider(db, { id: ulid(), type, apiKey });
-  });
+  ipcMain.handle("providers:save", (_event, type: string, apiKey: string) =>
+    runSync(
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        yield* repo.insert({ id: ulid(), type, apiKey });
+      }),
+    ),
+  );
 
-  ipcMain.handle("providers:remove", (_event, id: string) => {
-    removeProvider(db, id);
-  });
+  ipcMain.handle("providers:remove", (_event, id: string) =>
+    runSync(
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        yield* repo.remove(id);
+      }),
+    ),
+  );
 }
 
 app.whenReady().then(() => {
-  const { dbPath } = initializeAppData({
-    homeDir: app.getPath("home"),
-  });
+  const { dbPath } = Effect.runSync(
+    initializeAppData({
+      homeDir: app.getPath("home"),
+    }),
+  );
 
   const db = new DatabaseSync(dbPath);
   db.exec("PRAGMA foreign_keys = ON");
 
-  registerProviderHandlers(db);
+  const DatabaseLive = Layer.succeed(Database, db);
+  const AppLayer = ProviderRepoLive.pipe(Layer.provide(DatabaseLive));
+
+  const runSync = <A>(effect: Effect.Effect<A, unknown, ProviderRepo>) =>
+    Effect.runSync(Effect.provide(effect, AppLayer));
+
+  registerProviderHandlers(runSync);
 
   createMainWindow();
 

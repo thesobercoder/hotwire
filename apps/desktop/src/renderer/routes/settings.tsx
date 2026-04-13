@@ -1,34 +1,58 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { Effect } from "effect";
+
 import type { Provider } from "../../shared/types";
+import { appRuntime } from "../runtime";
+import { ProvidersClient } from "../services/providers-client";
 
 export function SettingsRoute() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [apiKey, setApiKey] = useState("");
 
-  const loadProviders = useCallback(async () => {
-    const result = await window.hotwire.providers.list();
-    setProviders(result);
+  const loadProviders = useCallback(() => {
+    void appRuntime
+      .runPromise(
+        Effect.gen(function* () {
+          const client = yield* ProvidersClient;
+          return yield* client.list;
+        }),
+      )
+      .then(setProviders);
   }, []);
 
   useEffect(() => {
-    void loadProviders();
+    loadProviders();
   }, [loadProviders]);
 
   const anthropic = providers.find((p) => p.type === "anthropic");
 
-  const handleSave = async () => {
+  const handleSave = () => {
     const trimmed = apiKey.trim();
     if (!trimmed) return;
-    await window.hotwire.providers.save("anthropic", trimmed);
-    setApiKey("");
-    await loadProviders();
+    void appRuntime
+      .runPromise(
+        Effect.gen(function* () {
+          const client = yield* ProvidersClient;
+          yield* client.save("anthropic", trimmed);
+        }),
+      )
+      .then(() => {
+        setApiKey("");
+        loadProviders();
+      });
   };
 
-  const handleDisconnect = async () => {
+  const handleDisconnect = () => {
     if (!anthropic) return;
-    await window.hotwire.providers.remove(anthropic.id);
-    await loadProviders();
+    void appRuntime
+      .runPromise(
+        Effect.gen(function* () {
+          const client = yield* ProvidersClient;
+          yield* client.remove(anthropic.id);
+        }),
+      )
+      .then(loadProviders);
   };
 
   return (

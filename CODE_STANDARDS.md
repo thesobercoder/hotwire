@@ -82,6 +82,44 @@ import { initializeAppData } from "@hotwire/db";
 import { createMainWindow } from "./window.js";
 ```
 
+## Effect.ts
+
+All side effects, services, and async operations use [Effect](https://effect.website/). This is a full ecosystem buy-in, not optional.
+
+- **Services**: Define with `Context.Tag`, implement via `Layer`.
+- **Errors**: Typed errors with `Data.TaggedError`. No bare `throw`.
+- **Schema**: Use `Schema` from `effect` for data encoding/decoding.
+- **DB layer**: `ProviderRepo` service wraps all database operations as Effects.
+- **Main process**: Builds layers, IPC handlers run effects via `Effect.runSync` / `Effect.runPromise`.
+- **Renderer**: `ManagedRuntime` provides services to React components. Async operations use `Effect.gen` + `runPromise`.
+- **Testing**: Swap `Layer` implementations in tests. Use `Effect.runSync` for synchronous assertions.
+
+```ts
+// Service definition
+export class ProviderRepo extends Context.Tag("@hotwire/db/ProviderRepo")<
+  ProviderRepo,
+  {
+    readonly list: Effect.Effect<Provider[], DatabaseError>;
+    readonly insert: (params: {
+      id: string;
+      type: string;
+      apiKey: string;
+    }) => Effect.Effect<void, DatabaseError>;
+  }
+>() {}
+
+// Layer implementation
+export const ProviderRepoLive = Layer.effect(
+  ProviderRepo,
+  Effect.gen(function* () {
+    const db = yield* Database;
+    return {
+      /* ... */
+    };
+  }),
+);
+```
+
 ## No native modules
 
 No FFI. No native Node addons. No packages that require native compilation to function (e.g. `better-sqlite3`, `sharp`, `keytar`). Use only pure JS/TS or WASM-based alternatives.

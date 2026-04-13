@@ -1,9 +1,12 @@
 import { RouterProvider } from "@tanstack/react-router";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Context, Effect, Layer, ManagedRuntime } from "effect";
 
 import type { Provider } from "../../../src/shared/types";
+import { appRuntime } from "../../../src/renderer/runtime";
 import { createTestRouter } from "../../../src/renderer/router";
+import { ProvidersClient } from "../../../src/renderer/services/providers-client";
 
 function stubHotwireApi(overrides: Partial<Window["hotwire"]> = {}) {
   window.hotwire = {
@@ -16,14 +19,36 @@ function stubHotwireApi(overrides: Partial<Window["hotwire"]> = {}) {
   };
 }
 
+function installTestRuntime(
+  client: Context.Tag.Service<ProvidersClient>,
+): () => void {
+  const TestLayer = Layer.succeed(ProvidersClient, client);
+  const testRuntime = ManagedRuntime.make(TestLayer);
+
+  const originalRunPromise = appRuntime.runPromise.bind(appRuntime);
+  (appRuntime as { runPromise: typeof appRuntime.runPromise }).runPromise = ((
+    effect: Effect.Effect<unknown, unknown, ProvidersClient>,
+  ) => testRuntime.runPromise(effect)) as typeof appRuntime.runPromise;
+
+  return () => {
+    (appRuntime as { runPromise: typeof appRuntime.runPromise }).runPromise =
+      originalRunPromise;
+  };
+}
+
 describe("Settings — Providers", () => {
   beforeEach(() => {
     stubHotwireApi();
   });
 
   it("renders a provider card with API key input on the settings route", async () => {
-    const router = createTestRouter("/settings");
+    const cleanup = installTestRuntime({
+      list: Effect.succeed([]),
+      save: () => Effect.void,
+      remove: () => Effect.void,
+    });
 
+    const router = createTestRouter("/settings");
     render(<RouterProvider router={router} />);
 
     expect(
@@ -31,6 +56,8 @@ describe("Settings — Providers", () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/api key/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
+
+    cleanup();
   });
 
   it("disconnects a saved provider and returns to API key input", async () => {
@@ -45,15 +72,14 @@ describe("Settings — Providers", () => {
     ];
     const removed: string[] = [];
 
-    stubHotwireApi({
-      providers: {
-        list: async () => providers,
-        save: async () => {},
-        remove: async (id) => {
+    const cleanup = installTestRuntime({
+      list: Effect.sync(() => providers),
+      save: () => Effect.void,
+      remove: (id: string) =>
+        Effect.sync(() => {
           removed.push(id);
           providers = [];
-        },
-      },
+        }),
     });
 
     const router = createTestRouter("/settings");
@@ -64,6 +90,8 @@ describe("Settings — Providers", () => {
 
     expect(await screen.findByLabelText(/api key/i)).toBeInTheDocument();
     expect(removed).toEqual(["01TEST00000000000000000001"]);
+
+    cleanup();
   });
 
   it("saves an API key and shows the connected state", async () => {
@@ -71,10 +99,10 @@ describe("Settings — Providers", () => {
     const saved: Array<{ type: string; apiKey: string }> = [];
     let providers: Provider[] = [];
 
-    stubHotwireApi({
-      providers: {
-        list: async () => providers,
-        save: async (type, apiKey) => {
+    const cleanup = installTestRuntime({
+      list: Effect.sync(() => providers),
+      save: (type: string, apiKey: string) =>
+        Effect.sync(() => {
           saved.push({ type, apiKey });
           providers = [
             {
@@ -84,9 +112,8 @@ describe("Settings — Providers", () => {
               createdAt: "2026-04-13T00:00:00Z",
             },
           ];
-        },
-        remove: async () => {},
-      },
+        }),
+      remove: () => Effect.void,
     });
 
     const router = createTestRouter("/settings");
@@ -103,5 +130,7 @@ describe("Settings — Providers", () => {
       type: "anthropic",
       apiKey: "sk-ant-test-key-1234",
     });
+
+    cleanup();
   });
 });
