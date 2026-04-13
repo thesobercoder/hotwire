@@ -1,3 +1,7 @@
+import { execSync } from "node:child_process";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { build, Platform, Arch } from "electron-builder";
 
 const validPlatforms = ["linux", "win", "mac"] as const;
@@ -14,7 +18,14 @@ for (const p of platforms) {
   }
 }
 
-const config = {
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+
+execSync(`tsx "${join(scriptDir, "fetch-deno.ts")}" -- ${platforms.join(" ")}`, {
+  stdio: "inherit",
+  cwd: join(scriptDir, ".."),
+});
+
+const baseConfig = {
   appId: "dev.hotwire.app",
   productName: "Hotwire",
   directories: {
@@ -28,6 +39,17 @@ const config = {
     identity: null,
   },
 };
+
+const configFor = (platform: PlatformName) => ({
+  ...baseConfig,
+  extraResources: [
+    {
+      from: `resources/${platform}`,
+      to: ".",
+      filter: ["**/*"],
+    },
+  ],
+});
 
 const targetFor = (
   platform: PlatformName,
@@ -43,5 +65,5 @@ const targetFor = (
 };
 
 for (const platform of platforms) {
-  await build({ targets: targetFor(platform), config });
+  await build({ targets: targetFor(platform), config: configFor(platform) });
 }
