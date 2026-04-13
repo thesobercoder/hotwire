@@ -148,6 +148,10 @@ function SettingsRoute() {
 }
 ```
 
+## Package manager
+
+pnpm is the only package manager. Always use `pnpm` to run scripts — never `npx`, `npm`, or `yarn`. Use `pnpm <script>` for root scripts (e.g. `pnpm test`, `pnpm typecheck`) and `pnpm --filter <package> <script>` for package-specific scripts.
+
 ## No native modules
 
 No FFI. No native Node addons. No packages that require native compilation to function (e.g. `better-sqlite3`, `sharp`, `keytar`). Use only pure JS/TS or WASM-based alternatives.
