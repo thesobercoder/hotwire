@@ -7,6 +7,8 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 
+import { SettingsRoute } from "./routes/settings";
+
 type AppRouterOptions = {
   history?:
     | ReturnType<typeof createBrowserHistory>
@@ -45,7 +47,13 @@ const shellRoute = createRoute({
   component: ShellRoute,
 });
 
-const routeTree = rootRoute.addChildren([shellRoute]);
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings",
+  component: SettingsRoute,
+});
+
+const routeTree = rootRoute.addChildren([shellRoute, settingsRoute]);
 
 export function createAppRouter(options: AppRouterOptions = {}) {
   const history = options.history ?? createBrowserHistory();
@@ -56,10 +64,10 @@ export function createAppRouter(options: AppRouterOptions = {}) {
   });
 }
 
-export function createTestRouter() {
+export function createTestRouter(initialEntry = "/") {
   return createAppRouter({
     history: createMemoryHistory({
-      initialEntries: ["/"],
+      initialEntries: [initialEntry],
     }),
   });
 }
