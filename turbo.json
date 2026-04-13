@@ -20,6 +20,11 @@
     "test": {
       "dependsOn": ["^test"],
       "outputs": []
+    },
+    "package": {
+      "dependsOn": ["build"],
+      "outputs": ["release/**"],
+      "cache": false
     }
   }
 }

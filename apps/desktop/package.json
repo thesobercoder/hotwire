@@ -1,19 +1,21 @@
 {
   "name": "@hotwire/desktop",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
+  "main": "dist/main/index.mjs",
   "scripts": {
     "dev": "tsx ./scripts/dev.ts",
     "build": "tsx ./scripts/build.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "package": "tsx ./scripts/package.ts"
   },
   "dependencies": {
     "@hotwire/db": "workspace:*",
     "@tanstack/react-router": "catalog:",
     "effect": "catalog:",
-    "electron": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "ulidx": "catalog:"
@@ -25,6 +27,8 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "electron": "catalog:",
+    "electron-builder": "catalog:",
     "esbuild": "catalog:",
     "jsdom": "catalog:",
     "tsx": "catalog:",
