@@ -1,29 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 
+import { getRouteApi, useRouter } from "@tanstack/react-router";
 import { Effect } from "effect";
 
-import type { Provider } from "../../shared/types";
 import { appRuntime } from "../runtime";
 import { ProvidersClient } from "../services/providers-client";
 
+const route = getRouteApi("/settings");
+
 export function SettingsRoute() {
-  const [providers, setProviders] = useState<Provider[]>([]);
+  const providers = route.useLoaderData();
+  const router = useRouter();
   const [apiKey, setApiKey] = useState("");
-
-  const loadProviders = useCallback(() => {
-    void appRuntime
-      .runPromise(
-        Effect.gen(function* () {
-          const client = yield* ProvidersClient;
-          return yield* client.list;
-        }),
-      )
-      .then(setProviders);
-  }, []);
-
-  useEffect(() => {
-    loadProviders();
-  }, [loadProviders]);
 
   const anthropic = providers.find((p) => p.type === "anthropic");
 
@@ -39,7 +27,7 @@ export function SettingsRoute() {
       )
       .then(() => {
         setApiKey("");
-        loadProviders();
+        void router.invalidate();
       });
   };
 
@@ -52,7 +40,7 @@ export function SettingsRoute() {
           yield* client.remove(anthropic.id);
         }),
       )
-      .then(loadProviders);
+      .then(() => router.invalidate());
   };
 
   return (

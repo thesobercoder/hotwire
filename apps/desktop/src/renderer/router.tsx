@@ -6,8 +6,11 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
+import { Effect } from "effect";
 
 import { SettingsRoute } from "./routes/settings";
+import { appRuntime } from "./runtime";
+import { ProvidersClient } from "./services/providers-client";
 
 type AppRouterOptions = {
   history?:
@@ -50,6 +53,13 @@ const shellRoute = createRoute({
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
+  loader: () =>
+    appRuntime.runPromise(
+      Effect.gen(function* () {
+        const client = yield* ProvidersClient;
+        return yield* client.list;
+      }),
+    ),
   component: SettingsRoute,
 });
 
