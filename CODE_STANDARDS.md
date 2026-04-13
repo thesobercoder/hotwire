@@ -120,6 +120,34 @@ export const ProviderRepoLive = Layer.effect(
 );
 ```
 
+## No useEffect
+
+No side-effect hooks. Data fetching lives in TanStack Router `loader` functions, not in components. Components read loader data via `useLoaderData()`. After mutations, call `router.invalidate()` to re-run loaders. `useState` for controlled inputs is fine.
+
+```ts
+// Route definition — data loading is declarative
+const settingsRoute = createRoute({
+  path: "/settings",
+  loader: () =>
+    appRuntime.runPromise(
+      Effect.gen(function* () {
+        const client = yield* ProvidersClient;
+        return yield* client.list;
+      }),
+    ),
+  component: SettingsRoute,
+});
+
+// Component — no useEffect, no useCallback for fetching
+const route = getRouteApi("/settings");
+
+function SettingsRoute() {
+  const providers = route.useLoaderData();
+  const router = useRouter();
+  // mutation → router.invalidate()
+}
+```
+
 ## No native modules
 
 No FFI. No native Node addons. No packages that require native compilation to function (e.g. `better-sqlite3`, `sharp`, `keytar`). Use only pure JS/TS or WASM-based alternatives.
