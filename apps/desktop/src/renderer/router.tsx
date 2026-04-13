@@ -9,9 +9,15 @@ import {
 } from "@tanstack/react-router";
 import { Effect } from "effect";
 
+import type { Provider, ProviderModel } from "../shared/types";
 import { SettingsRoute } from "./routes/settings";
 import { appRuntime } from "./runtime";
 import { ProvidersClient } from "./services/providers-client";
+
+export type SettingsLoaderData = {
+  providers: Provider[];
+  models: Map<string, ProviderModel[]>;
+};
 
 type AppRouterOptions = {
   history?:
@@ -69,11 +75,17 @@ const shellRoute = createRoute({
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
-  loader: () =>
+  loader: (): Promise<SettingsLoaderData> =>
     appRuntime.runPromise(
       Effect.gen(function* () {
         const client = yield* ProvidersClient;
-        return yield* client.list;
+        const providers = yield* client.list;
+        const models = new Map<string, ProviderModel[]>();
+        for (const p of providers) {
+          const m = yield* client.listModels(p.id);
+          models.set(p.id, m);
+        }
+        return { providers, models };
       }),
     ),
   component: SettingsRoute,

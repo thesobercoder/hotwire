@@ -1,6 +1,6 @@
 import { Context, Data, Effect, Layer } from "effect";
 
-import type { Provider } from "../../shared/types";
+import type { Provider, ProviderModel } from "../../shared/types";
 
 export class ProvidersClientError extends Data.TaggedError(
   "ProvidersClientError",
@@ -20,6 +20,14 @@ export class ProvidersClient extends Context.Tag(
     ) => Effect.Effect<void, ProvidersClientError>;
     readonly remove: (id: string) => Effect.Effect<void, ProvidersClientError>;
     readonly hasEnabledModel: Effect.Effect<boolean, ProvidersClientError>;
+    readonly listModels: (
+      providerId: string,
+    ) => Effect.Effect<ProviderModel[], ProvidersClientError>;
+    readonly setModelEnabled: (
+      providerId: string,
+      modelId: string,
+      enabled: boolean,
+    ) => Effect.Effect<void, ProvidersClientError>;
   }
 >() {}
 
@@ -45,4 +53,17 @@ export const ProvidersClientLive = Layer.succeed(ProvidersClient, {
     try: () => window.hotwire.providers.hasEnabledModel(),
     catch: (cause) => new ProvidersClientError({ cause }),
   }),
+
+  listModels: (providerId) =>
+    Effect.tryPromise({
+      try: () => window.hotwire.providers.listModels(providerId),
+      catch: (cause) => new ProvidersClientError({ cause }),
+    }),
+
+  setModelEnabled: (providerId, modelId, enabled) =>
+    Effect.tryPromise({
+      try: () =>
+        window.hotwire.providers.setModelEnabled(providerId, modelId, enabled),
+      catch: (cause) => new ProvidersClientError({ cause }),
+    }),
 });

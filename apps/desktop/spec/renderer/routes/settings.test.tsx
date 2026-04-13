@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Context, Effect, Layer, ManagedRuntime } from "effect";
 
-import type { Provider } from "../../../src/shared/types";
+import type { Provider, ProviderModel } from "../../../src/shared/types";
 import { appRuntime } from "../../../src/renderer/runtime";
 import { createTestRouter } from "../../../src/renderer/router";
 import { ProvidersClient } from "../../../src/renderer/services/providers-client";
@@ -15,6 +15,8 @@ function stubHotwireApi(overrides: Partial<Window["hotwire"]> = {}) {
       save: async () => {},
       remove: async () => {},
       hasEnabledModel: async () => false,
+      listModels: async () => [],
+      setModelEnabled: async () => {},
     },
     ...overrides,
   };
@@ -48,6 +50,8 @@ describe("Settings — Providers", () => {
       save: () => Effect.void,
       remove: () => Effect.void,
       hasEnabledModel: Effect.succeed(false),
+      listModels: () => Effect.succeed([]),
+      setModelEnabled: () => Effect.void,
     });
 
     const router = createTestRouter("/settings");
@@ -83,6 +87,15 @@ describe("Settings — Providers", () => {
           providers = [];
         }),
       hasEnabledModel: Effect.succeed(false),
+      listModels: () =>
+        Effect.succeed([
+          {
+            providerId: "01TEST00000000000000000001",
+            modelId: "claude-sonnet-4-20250514",
+            enabled: true,
+          },
+        ]),
+      setModelEnabled: () => Effect.void,
     });
 
     const router = createTestRouter("/settings");
@@ -101,6 +114,7 @@ describe("Settings — Providers", () => {
     const user = userEvent.setup();
     const saved: Array<{ type: string; apiKey: string }> = [];
     let providers: Provider[] = [];
+    let models: ProviderModel[] = [];
 
     const cleanup = installTestRuntime({
       list: Effect.sync(() => providers),
@@ -115,9 +129,18 @@ describe("Settings — Providers", () => {
               createdAt: "2026-04-13T00:00:00Z",
             },
           ];
+          models = [
+            {
+              providerId: "01TEST00000000000000000001",
+              modelId: "claude-sonnet-4-20250514",
+              enabled: true,
+            },
+          ];
         }),
       remove: () => Effect.void,
       hasEnabledModel: Effect.succeed(false),
+      listModels: () => Effect.sync(() => models),
+      setModelEnabled: () => Effect.void,
     });
 
     const router = createTestRouter("/settings");
@@ -134,6 +157,170 @@ describe("Settings — Providers", () => {
       type: "anthropic",
       apiKey: "sk-ant-test-key-1234",
     });
+
+    cleanup();
+  });
+
+  it("renders per-model enable checkboxes for a connected provider", async () => {
+    const cleanup = installTestRuntime({
+      list: Effect.succeed([
+        {
+          id: "01TEST00000000000000000001",
+          type: "anthropic",
+          apiKey: "sk-ant-test-key-5678",
+          createdAt: "2026-04-13T00:00:00Z",
+        },
+      ]),
+      save: () => Effect.void,
+      remove: () => Effect.void,
+      hasEnabledModel: Effect.succeed(true),
+      listModels: () =>
+        Effect.succeed([
+          {
+            providerId: "01TEST00000000000000000001",
+            modelId: "claude-sonnet-4-20250514",
+            enabled: true,
+          },
+        ]),
+      setModelEnabled: () => Effect.void,
+    });
+
+    const router = createTestRouter("/settings");
+    render(<RouterProvider router={router} />);
+
+    expect(
+      await screen.findByRole("checkbox", { name: /claude sonnet 4/i }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: /claude opus 4/i }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: /claude haiku 3\.5/i }),
+    ).not.toBeChecked();
+
+    cleanup();
+  });
+
+  it("toggles a model checkbox and calls setModelEnabled", async () => {
+    const user = userEvent.setup();
+    const toggled: Array<{
+      providerId: string;
+      modelId: string;
+      enabled: boolean;
+    }> = [];
+    let models: ProviderModel[] = [
+      {
+        providerId: "01TEST00000000000000000001",
+        modelId: "claude-sonnet-4-20250514",
+        enabled: true,
+      },
+    ];
+
+    const cleanup = installTestRuntime({
+      list: Effect.succeed([
+        {
+          id: "01TEST00000000000000000001",
+          type: "anthropic",
+          apiKey: "sk-ant-test-key-5678",
+          createdAt: "2026-04-13T00:00:00Z",
+        },
+      ]),
+      save: () => Effect.void,
+      remove: () => Effect.void,
+      hasEnabledModel: Effect.succeed(true),
+      listModels: () => Effect.sync(() => models),
+      setModelEnabled: (
+        providerId: string,
+        modelId: string,
+        enabled: boolean,
+      ) =>
+        Effect.sync(() => {
+          toggled.push({ providerId, modelId, enabled });
+          models = models.map((m) =>
+            m.modelId === modelId ? { ...m, enabled } : m,
+          );
+        }),
+    });
+
+    const router = createTestRouter("/settings");
+    render(<RouterProvider router={router} />);
+
+    const checkbox = await screen.findByRole("checkbox", {
+      name: /claude sonnet 4/i,
+    });
+    expect(checkbox).toBeChecked();
+
+    await user.click(checkbox);
+
+    expect(toggled).toEqual([
+      {
+        providerId: "01TEST00000000000000000001",
+        modelId: "claude-sonnet-4-20250514",
+        enabled: false,
+      },
+    ]);
+
+    cleanup();
+  });
+
+  it("shows disconnected visual when all models are disabled", async () => {
+    const cleanup = installTestRuntime({
+      list: Effect.succeed([
+        {
+          id: "01TEST00000000000000000001",
+          type: "anthropic",
+          apiKey: "sk-ant-test-key-5678",
+          createdAt: "2026-04-13T00:00:00Z",
+        },
+      ]),
+      save: () => Effect.void,
+      remove: () => Effect.void,
+      hasEnabledModel: Effect.succeed(false),
+      listModels: () => Effect.succeed([]),
+      setModelEnabled: () => Effect.void,
+    });
+
+    const router = createTestRouter("/settings");
+    render(<RouterProvider router={router} />);
+
+    expect(
+      await screen.findByText(/disconnected.*no models enabled/i),
+    ).toBeInTheDocument();
+
+    cleanup();
+  });
+
+  it("shows connected state with key suffix when models are enabled", async () => {
+    const cleanup = installTestRuntime({
+      list: Effect.succeed([
+        {
+          id: "01TEST00000000000000000001",
+          type: "anthropic",
+          apiKey: "sk-ant-test-key-9999",
+          createdAt: "2026-04-13T00:00:00Z",
+        },
+      ]),
+      save: () => Effect.void,
+      remove: () => Effect.void,
+      hasEnabledModel: Effect.succeed(true),
+      listModels: () =>
+        Effect.succeed([
+          {
+            providerId: "01TEST00000000000000000001",
+            modelId: "claude-sonnet-4-20250514",
+            enabled: true,
+          },
+        ]),
+      setModelEnabled: () => Effect.void,
+    });
+
+    const router = createTestRouter("/settings");
+    render(<RouterProvider router={router} />);
+
+    const status = await screen.findByText(/connected/i);
+    expect(status).toBeInTheDocument();
+    expect(status.textContent).not.toMatch(/disconnected/i);
+    expect(screen.getByText(/9999/)).toBeInTheDocument();
 
     cleanup();
   });

@@ -13,6 +13,8 @@ function stubHotwireApi(overrides: Partial<Window["hotwire"]> = {}) {
       save: async () => {},
       remove: async () => {},
       hasEnabledModel: async () => false,
+      listModels: async () => [],
+      setModelEnabled: async () => {},
     },
     ...overrides,
   };
@@ -46,6 +48,8 @@ describe("Shell — New session gate", () => {
       save: () => Effect.void,
       remove: () => Effect.void,
       hasEnabledModel: Effect.succeed(false),
+      listModels: () => Effect.succeed([]),
+      setModelEnabled: () => Effect.void,
     });
 
     const router = createTestRouter();
@@ -69,6 +73,8 @@ describe("Shell — New session gate", () => {
       save: () => Effect.void,
       remove: () => Effect.void,
       hasEnabledModel: Effect.succeed(true),
+      listModels: () => Effect.succeed([]),
+      setModelEnabled: () => Effect.void,
     });
 
     const router = createTestRouter();

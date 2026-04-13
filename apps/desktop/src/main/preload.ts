@@ -8,6 +8,15 @@ const hotwireApi: HotwireApi = {
     save: (type, apiKey) => ipcRenderer.invoke("providers:save", type, apiKey),
     remove: (id) => ipcRenderer.invoke("providers:remove", id),
     hasEnabledModel: () => ipcRenderer.invoke("providers:hasEnabledModel"),
+    listModels: (providerId) =>
+      ipcRenderer.invoke("providers:listModels", providerId),
+    setModelEnabled: (providerId, modelId, enabled) =>
+      ipcRenderer.invoke(
+        "providers:setModelEnabled",
+        providerId,
+        modelId,
+        enabled,
+      ),
   },
 };
 

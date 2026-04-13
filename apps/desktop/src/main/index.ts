@@ -88,6 +88,26 @@ function registerProviderHandlers(
       }),
     ),
   );
+
+  ipcMain.handle("providers:listModels", (_event, providerId: string) =>
+    runSync(
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        return yield* repo.listModels(providerId);
+      }),
+    ),
+  );
+
+  ipcMain.handle(
+    "providers:setModelEnabled",
+    (_event, providerId: string, modelId: string, enabled: boolean) =>
+      runSync(
+        Effect.gen(function* () {
+          const repo = yield* ProviderRepo;
+          yield* repo.setModelEnabled({ providerId, modelId, enabled });
+        }),
+      ),
+  );
 }
 
 app.whenReady().then(() => {
