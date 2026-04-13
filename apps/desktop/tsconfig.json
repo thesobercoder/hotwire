@@ -13,6 +13,7 @@
     "src/**/*.d.ts",
     "spec/**/*.ts",
     "spec/**/*.tsx",
+    "scripts/**/*.ts",
     "vite.config.ts",
     "vitest.setup.ts"
   ]

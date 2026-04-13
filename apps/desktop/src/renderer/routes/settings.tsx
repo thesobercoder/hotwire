@@ -72,7 +72,9 @@ export function SettingsRoute() {
         {anthropic ? (
           <>
             <p>
-              {allModelsDisabled ? "Disconnected — no models enabled" : "Connected"}{" "}
+              {allModelsDisabled
+                ? "Disconnected — no models enabled"
+                : "Connected"}{" "}
               — key ending in <code>{anthropic.apiKey.slice(-4)}</code>
             </p>
             <fieldset>
