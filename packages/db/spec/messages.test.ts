@@ -1,6 +1,6 @@
 import { Either, Schema } from "effect";
 
-import { MessageInfo, Part, ReasoningPart, TextPart } from "../src/messages.js";
+import { Part, ReasoningPart, TextPart } from "../src/messages.js";
 
 describe("Part schema", () => {
   it("decodes a TextPart with required fields", () => {
@@ -87,40 +87,5 @@ describe("Part schema", () => {
 
     expect(Either.isRight(text)).toBe(true);
     expect(Either.isRight(reasoning)).toBe(true);
-  });
-});
-
-describe("MessageInfo schema", () => {
-  it("decodes a user message with minimal required fields", () => {
-    const result = Schema.decodeUnknownEither(MessageInfo)({
-      id: "01JTEST000000000000000MS1",
-      sessionID: "01JTEST000000000000000SS1",
-      role: "user",
-      time: { created: 1700000000 },
-    });
-
-    expect(Either.isRight(result)).toBe(true);
-  });
-
-  it("decodes an assistant message with minimal required fields", () => {
-    const result = Schema.decodeUnknownEither(MessageInfo)({
-      id: "01JTEST000000000000000MS2",
-      sessionID: "01JTEST000000000000000SS1",
-      role: "assistant",
-      time: { created: 1700000000 },
-    });
-
-    expect(Either.isRight(result)).toBe(true);
-  });
-
-  it("rejects a message with an unknown role", () => {
-    const result = Schema.decodeUnknownEither(MessageInfo)({
-      id: "01JTEST000000000000000MS1",
-      sessionID: "01JTEST000000000000000SS1",
-      role: "system",
-      time: { created: 1700000000 },
-    });
-
-    expect(Either.isLeft(result)).toBe(true);
   });
 });

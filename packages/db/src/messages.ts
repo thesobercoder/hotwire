@@ -41,27 +41,3 @@ export type ReasoningPart = typeof ReasoningPart.Type;
 export const Part = Schema.Union(TextPart, ReasoningPart);
 
 export type Part = typeof Part.Type;
-
-const MessageBase = {
-  id: Schema.String,
-  sessionID: Schema.String,
-  time: Schema.Struct({ created: Schema.Number }),
-};
-
-export const UserMessage = Schema.Struct({
-  ...MessageBase,
-  role: Schema.Literal("user"),
-});
-
-export type UserMessage = typeof UserMessage.Type;
-
-export const AssistantMessage = Schema.Struct({
-  ...MessageBase,
-  role: Schema.Literal("assistant"),
-});
-
-export type AssistantMessage = typeof AssistantMessage.Type;
-
-export const MessageInfo = Schema.Union(UserMessage, AssistantMessage);
-
-export type MessageInfo = typeof MessageInfo.Type;

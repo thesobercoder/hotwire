@@ -1,13 +1,6 @@
 export { initializeAppData } from "./app-data.js";
 export { Database, DbFilePath } from "./database.js";
-export {
-  AssistantMessage,
-  MessageInfo,
-  Part,
-  ReasoningPart,
-  TextPart,
-  UserMessage,
-} from "./messages.js";
+export { Part, ReasoningPart, TextPart } from "./messages.js";
 export {
   DatabaseError,
   Provider,
