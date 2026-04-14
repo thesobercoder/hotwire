@@ -55,12 +55,7 @@ const OutputFormatJsonSchema = Schema.Struct({
   retryCount: Schema.Number,
 });
 
-export const OutputFormat = Schema.Union(
-  OutputFormatText,
-  OutputFormatJsonSchema,
-);
-
-export type OutputFormat = typeof OutputFormat.Type;
+const OutputFormat = Schema.Union(OutputFormatText, OutputFormatJsonSchema);
 
 const UserSummary = Schema.Struct({
   title: Schema.optional(Schema.String),
@@ -160,13 +155,11 @@ export const MessageRepoLive = Layer.effect(
   Effect.gen(function* () {
     const db = yield* Database;
 
-    const timeOf = (info: MessageInfo) => info.time.created;
-
     return {
       create: (info) =>
         Effect.try({
           try: () => {
-            const created = timeOf(info);
+            const created = info.time.created;
             db.prepare(
               `INSERT INTO message (id, session_id, data, time_created, time_updated)
                VALUES (?, ?, ?, ?, ?)`,

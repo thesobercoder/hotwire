@@ -5,7 +5,6 @@ export {
   MessageInfo,
   MessageRepo,
   MessageRepoLive,
-  OutputFormat,
   Part,
   ReasoningPart,
   TextPart,

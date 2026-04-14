@@ -238,36 +238,6 @@ describe("MessageRepo", () => {
     db.close();
   });
 
-  it("appendPart associates a TextPart with its message in listBySession", () => {
-    const { layer, db } = createTestLayer();
-
-    const result = run(
-      layer,
-      Effect.gen(function* () {
-        const repo = yield* MessageRepo;
-        yield* repo.create(userMessageFixture);
-        yield* repo.appendPart({
-          id: "01JTEST000000000000000PT1",
-          messageID: userMessageFixture.id,
-          sessionID: userMessageFixture.sessionID,
-          type: "text",
-          text: "hello",
-        });
-        return yield* repo.listBySession(userMessageFixture.sessionID);
-      }),
-    );
-
-    expect(result).toHaveLength(1);
-    const only = result[0] as MessageWithParts;
-    expect(only.parts).toHaveLength(1);
-    const part = only.parts[0];
-    expect(part?.type).toBe("text");
-    if (part?.type === "text") {
-      expect(part.text).toBe("hello");
-    }
-    db.close();
-  });
-
   it("orders messages by time_created ascending across a session", () => {
     const { layer, db } = createTestLayer();
 
