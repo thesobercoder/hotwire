@@ -11,6 +11,7 @@ function stubHotwireApi(overrides: Partial<Window["hotwire"]> = {}) {
     providers: {
       list: async () => [],
       save: async () => {},
+      saveOAuth: async () => {},
       remove: async () => {},
       hasEnabledModel: async () => false,
       listModels: async () => [],
@@ -57,6 +58,7 @@ describe("Shell — New session gate", () => {
     const cleanup = installTestRuntime({
       list: Effect.succeed([]),
       save: () => Effect.void,
+      saveOAuth: () => Effect.void,
       remove: () => Effect.void,
       hasEnabledModel: Effect.succeed(false),
       listModels: () => Effect.succeed([]),
@@ -82,6 +84,7 @@ describe("Shell — New session gate", () => {
     const cleanup = installTestRuntime({
       list: Effect.succeed([]),
       save: () => Effect.void,
+      saveOAuth: () => Effect.void,
       remove: () => Effect.void,
       hasEnabledModel: Effect.succeed(true),
       listModels: () => Effect.succeed([]),

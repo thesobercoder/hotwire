@@ -1,6 +1,10 @@
 import { Context, Data, Effect, Layer } from "effect";
 
-import type { Provider, ProviderModel } from "../../shared/types";
+import type {
+  Provider,
+  ProviderModel,
+  TokenResponseDto,
+} from "../../shared/types";
 
 export class ProvidersClientError extends Data.TaggedError(
   "ProvidersClientError",
@@ -17,6 +21,10 @@ export class ProvidersClient extends Context.Tag(
     readonly save: (
       type: string,
       apiKey: string,
+    ) => Effect.Effect<void, ProvidersClientError>;
+    readonly saveOAuth: (
+      type: string,
+      tokens: TokenResponseDto,
     ) => Effect.Effect<void, ProvidersClientError>;
     readonly remove: (id: string) => Effect.Effect<void, ProvidersClientError>;
     readonly hasEnabledModel: Effect.Effect<boolean, ProvidersClientError>;
@@ -40,6 +48,12 @@ export const ProvidersClientLive = Layer.succeed(ProvidersClient, {
   save: (type, apiKey) =>
     Effect.tryPromise({
       try: () => window.hotwire.providers.save(type, apiKey),
+      catch: (cause) => new ProvidersClientError({ cause }),
+    }),
+
+  saveOAuth: (type, tokens) =>
+    Effect.tryPromise({
+      try: () => window.hotwire.providers.saveOAuth(type, tokens),
       catch: (cause) => new ProvidersClientError({ cause }),
     }),
 

@@ -1,11 +1,12 @@
 import { RouterProvider } from "@tanstack/react-router";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Context, Effect, Layer, ManagedRuntime } from "effect";
 
 import type { Provider, ProviderModel } from "../../../src/shared/types";
 import { appRuntime } from "../../../src/renderer/runtime";
 import { createTestRouter } from "../../../src/renderer/router";
+import { DeviceFlowClient } from "../../../src/renderer/services/device-flow-client";
 import { ProvidersClient } from "../../../src/renderer/services/providers-client";
 
 function stubHotwireApi(overrides: Partial<Window["hotwire"]> = {}) {
@@ -13,6 +14,7 @@ function stubHotwireApi(overrides: Partial<Window["hotwire"]> = {}) {
     providers: {
       list: async () => [],
       save: async () => {},
+      saveOAuth: async () => {},
       remove: async () => {},
       hasEnabledModel: async () => false,
       listModels: async () => [],
@@ -33,15 +35,25 @@ function stubHotwireApi(overrides: Partial<Window["hotwire"]> = {}) {
   };
 }
 
+const noopDeviceFlowClient: Context.Tag.Service<DeviceFlowClient> = {
+  start: () => Effect.never,
+  poll: () => Effect.never,
+  openUrl: () => Effect.void,
+};
+
 function installTestRuntime(
   client: Context.Tag.Service<ProvidersClient>,
+  deviceFlowClient: Context.Tag.Service<DeviceFlowClient> = noopDeviceFlowClient,
 ): () => void {
-  const TestLayer = Layer.succeed(ProvidersClient, client);
+  const TestLayer = Layer.mergeAll(
+    Layer.succeed(ProvidersClient, client),
+    Layer.succeed(DeviceFlowClient, deviceFlowClient),
+  );
   const testRuntime = ManagedRuntime.make(TestLayer);
 
   const originalRunPromise = appRuntime.runPromise.bind(appRuntime);
   (appRuntime as { runPromise: typeof appRuntime.runPromise }).runPromise = ((
-    effect: Effect.Effect<unknown, unknown, ProvidersClient>,
+    effect: Effect.Effect<unknown, unknown, ProvidersClient | DeviceFlowClient>,
   ) => testRuntime.runPromise(effect)) as typeof appRuntime.runPromise;
 
   return () => {
@@ -59,6 +71,7 @@ describe("Settings — Providers", () => {
     const cleanup = installTestRuntime({
       list: Effect.succeed([]),
       save: () => Effect.void,
+      saveOAuth: () => Effect.void,
       remove: () => Effect.void,
       hasEnabledModel: Effect.succeed(false),
       listModels: () => Effect.succeed([]),
@@ -92,6 +105,7 @@ describe("Settings — Providers", () => {
     const cleanup = installTestRuntime({
       list: Effect.sync(() => providers),
       save: () => Effect.void,
+      saveOAuth: () => Effect.void,
       remove: (id: string) =>
         Effect.sync(() => {
           removed.push(id);
@@ -148,6 +162,7 @@ describe("Settings — Providers", () => {
             },
           ];
         }),
+      saveOAuth: () => Effect.void,
       remove: () => Effect.void,
       hasEnabledModel: Effect.succeed(false),
       listModels: () => Effect.sync(() => models),
@@ -183,6 +198,7 @@ describe("Settings — Providers", () => {
         },
       ]),
       save: () => Effect.void,
+      saveOAuth: () => Effect.void,
       remove: () => Effect.void,
       hasEnabledModel: Effect.succeed(true),
       listModels: () =>
@@ -237,6 +253,7 @@ describe("Settings — Providers", () => {
         },
       ]),
       save: () => Effect.void,
+      saveOAuth: () => Effect.void,
       remove: () => Effect.void,
       hasEnabledModel: Effect.succeed(true),
       listModels: () => Effect.sync(() => models),
@@ -285,6 +302,7 @@ describe("Settings — Providers", () => {
         },
       ]),
       save: () => Effect.void,
+      saveOAuth: () => Effect.void,
       remove: () => Effect.void,
       hasEnabledModel: Effect.succeed(false),
       listModels: () => Effect.succeed([]),
@@ -312,6 +330,7 @@ describe("Settings — Providers", () => {
         },
       ]),
       save: () => Effect.void,
+      saveOAuth: () => Effect.void,
       remove: () => Effect.void,
       hasEnabledModel: Effect.succeed(true),
       listModels: () =>
@@ -332,6 +351,199 @@ describe("Settings — Providers", () => {
     expect(status).toBeInTheDocument();
     expect(status.textContent).not.toMatch(/disconnected/i);
     expect(screen.getByText(/9999/)).toBeInTheDocument();
+
+    cleanup();
+  });
+});
+
+describe("Settings — Copilot OAuth", () => {
+  beforeEach(() => {
+    stubHotwireApi();
+  });
+
+  it("renders a Copilot Connect button when no Copilot provider is connected", async () => {
+    const cleanup = installTestRuntime(
+      {
+        list: Effect.succeed([]),
+        save: () => Effect.void,
+        saveOAuth: () => Effect.void,
+        remove: () => Effect.void,
+        hasEnabledModel: Effect.succeed(false),
+        listModels: () => Effect.succeed([]),
+        setModelEnabled: () => Effect.void,
+      },
+      {
+        start: () =>
+          Effect.succeed({
+            deviceCode: "D",
+            userCode: "U",
+            verificationUri: "https://example.com/device",
+            expiresIn: 900,
+            interval: 5,
+          }),
+        poll: () => Effect.never,
+        openUrl: () => Effect.void,
+      },
+    );
+
+    const router = createTestRouter("/settings");
+    render(<RouterProvider router={router} />);
+
+    expect(
+      await screen.findByRole("heading", { name: /github copilot/i }),
+    ).toBeInTheDocument();
+    const copilotCard = screen
+      .getByRole("heading", { name: /github copilot/i })
+      .closest("article");
+    expect(copilotCard).not.toBeNull();
+    expect(
+      copilotCard ? copilotCard.querySelector("button") : null,
+    ).toHaveTextContent(/connect/i);
+
+    cleanup();
+  });
+
+  it("persists Copilot tokens via saveOAuth after device flow completes", async () => {
+    const user = userEvent.setup();
+    const saved: Array<{
+      type: string;
+      tokens: {
+        accessToken: string;
+        refreshToken?: string;
+        expiresIn?: number;
+      };
+    }> = [];
+    let providers: Provider[] = [];
+
+    const cleanup = installTestRuntime(
+      {
+        list: Effect.sync(() => providers),
+        save: () => Effect.void,
+        saveOAuth: (type, tokens) =>
+          Effect.sync(() => {
+            saved.push({ type, tokens });
+            providers = [
+              {
+                id: "01TEST00000000000000C0P1LT",
+                type,
+                apiKey: "",
+                createdAt: "2026-04-14T00:00:00Z",
+              },
+            ];
+          }),
+        remove: () => Effect.void,
+        hasEnabledModel: Effect.succeed(false),
+        listModels: () => Effect.succeed([]),
+        setModelEnabled: () => Effect.void,
+      },
+      {
+        start: () =>
+          Effect.succeed({
+            deviceCode: "DEVICE-CODE",
+            userCode: "WDJB-MJHT",
+            verificationUri: "https://github.com/login/device",
+            expiresIn: 900,
+            interval: 5,
+          }),
+        poll: () =>
+          Effect.succeed({
+            accessToken: "gho_access",
+            refreshToken: "ghr_refresh",
+            expiresIn: 3600,
+          }),
+        openUrl: () => Effect.void,
+      },
+    );
+
+    const router = createTestRouter("/settings");
+    render(<RouterProvider router={router} />);
+
+    await screen.findByRole("heading", { name: /github copilot/i });
+    const copilotCard = screen
+      .getByRole("heading", { name: /github copilot/i })
+      .closest("article") as HTMLElement;
+    const connectButton = copilotCard.querySelector(
+      "button",
+    ) as HTMLButtonElement;
+    await user.click(connectButton);
+
+    await waitFor(() => {
+      expect(saved).toHaveLength(1);
+    });
+    expect(saved[0]?.type).toBe("copilot");
+    expect(saved[0]?.tokens).toEqual({
+      accessToken: "gho_access",
+      refreshToken: "ghr_refresh",
+      expiresIn: 3600,
+    });
+
+    const copilotCardAfter = (await screen.findByRole("heading", {
+      name: /github copilot/i,
+    })).closest("article") as HTMLElement;
+    await waitFor(() => {
+      expect(copilotCardAfter.textContent ?? "").toMatch(/connected/i);
+    });
+
+    cleanup();
+  });
+
+  it("disconnects a connected Copilot provider", async () => {
+    const user = userEvent.setup();
+    const removed: string[] = [];
+    let providers: Provider[] = [
+      {
+        id: "01TEST00000000000000C0P1LT",
+        type: "copilot",
+        apiKey: "",
+        createdAt: "2026-04-14T00:00:00Z",
+      },
+    ];
+
+    const cleanup = installTestRuntime(
+      {
+        list: Effect.sync(() => providers),
+        save: () => Effect.void,
+        saveOAuth: () => Effect.void,
+        remove: (id: string) =>
+          Effect.sync(() => {
+            removed.push(id);
+            providers = providers.filter((p) => p.id !== id);
+          }),
+        hasEnabledModel: Effect.succeed(false),
+        listModels: () => Effect.succeed([]),
+        setModelEnabled: () => Effect.void,
+      },
+      {
+        start: () => Effect.never,
+        poll: () => Effect.never,
+        openUrl: () => Effect.void,
+      },
+    );
+
+    const router = createTestRouter("/settings");
+    render(<RouterProvider router={router} />);
+
+    const copilotCard = (await screen.findByRole("heading", {
+      name: /github copilot/i,
+    })).closest("article") as HTMLElement;
+
+    expect(copilotCard.textContent ?? "").toMatch(/connected/i);
+
+    const disconnectButton = Array.from(
+      copilotCard.querySelectorAll("button"),
+    ).find((b) => /disconnect/i.test(b.textContent ?? ""));
+    expect(disconnectButton).toBeDefined();
+    await user.click(disconnectButton!);
+
+    expect(removed).toEqual(["01TEST00000000000000C0P1LT"]);
+
+    const copilotCardAfter = (await screen.findByRole("heading", {
+      name: /github copilot/i,
+    })).closest("article") as HTMLElement;
+    await waitFor(() => {
+      const btns = Array.from(copilotCardAfter.querySelectorAll("button"));
+      expect(btns.some((b) => /connect/i.test(b.textContent ?? ""))).toBe(true);
+    });
 
     cleanup();
   });

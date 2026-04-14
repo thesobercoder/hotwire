@@ -4,6 +4,9 @@ import { getRouteApi, useRouter } from "@tanstack/react-router";
 import { Effect } from "effect";
 
 import { PROVIDER_MODELS } from "../../shared/models";
+import { COPILOT_DEVICE_FLOW_CONFIG } from "../../shared/providers";
+import type { TokenResponseDto } from "../../shared/types";
+import { DeviceFlowCard } from "../components/device-flow-card";
 import { appRuntime } from "../runtime";
 import { ProvidersClient } from "../services/providers-client";
 
@@ -15,6 +18,7 @@ export function SettingsRoute() {
   const [apiKey, setApiKey] = useState("");
 
   const anthropic = providers.find((p) => p.type === "anthropic");
+  const copilot = providers.find((p) => p.type === "copilot");
   const anthropicModels = anthropic ? (models.get(anthropic.id) ?? []) : [];
   const enabledModelIds = new Set(
     anthropicModels.filter((m) => m.enabled).map((m) => m.modelId),
@@ -45,6 +49,29 @@ export function SettingsRoute() {
         Effect.gen(function* () {
           const client = yield* ProvidersClient;
           yield* client.remove(anthropic.id);
+        }),
+      )
+      .then(() => router.invalidate());
+  };
+
+  const handleCopilotComplete = (tokens: TokenResponseDto) => {
+    void appRuntime
+      .runPromise(
+        Effect.gen(function* () {
+          const client = yield* ProvidersClient;
+          yield* client.saveOAuth("copilot", tokens);
+        }),
+      )
+      .then(() => router.invalidate());
+  };
+
+  const handleCopilotDisconnect = () => {
+    if (!copilot) return;
+    void appRuntime
+      .runPromise(
+        Effect.gen(function* () {
+          const client = yield* ProvidersClient;
+          yield* client.remove(copilot.id);
         }),
       )
       .then(() => router.invalidate());
@@ -110,6 +137,23 @@ export function SettingsRoute() {
               Save
             </button>
           </>
+        )}
+      </article>
+      <article>
+        <h2>GitHub Copilot</h2>
+        {copilot ? (
+          <>
+            <p>Connected</p>
+            <button type="button" onClick={handleCopilotDisconnect}>
+              Disconnect
+            </button>
+          </>
+        ) : (
+          <DeviceFlowCard
+            providerType="copilot"
+            config={COPILOT_DEVICE_FLOW_CONFIG}
+            onComplete={handleCopilotComplete}
+          />
         )}
       </article>
     </section>

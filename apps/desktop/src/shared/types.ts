@@ -51,6 +51,7 @@ export type ProviderModel = typeof ProviderModel.Type;
 export type ProvidersApi = {
   list(): Promise<Provider[]>;
   save(type: string, apiKey: string): Promise<void>;
+  saveOAuth(type: string, tokens: TokenResponseDto): Promise<void>;
   remove(id: string): Promise<void>;
   hasEnabledModel(): Promise<boolean>;
   listModels(providerId: string): Promise<ProviderModel[]>;

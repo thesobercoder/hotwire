@@ -15,6 +15,7 @@ import {
   pollForToken,
   requestDeviceCode,
   type DeviceFlowConfig,
+  type TokenResponse,
 } from "@hotwire/oauth";
 
 import { DeviceFlowHttpLive } from "./device-flow.js";
@@ -76,6 +77,28 @@ function registerProviderHandlers(
         }
       }),
     ),
+  );
+
+  ipcMain.handle(
+    "providers:saveOAuth",
+    (_event, type: string, tokens: TokenResponse) =>
+      runSync(
+        Effect.gen(function* () {
+          const repo = yield* ProviderRepo;
+          const id = ulid();
+          yield* repo.insert({ id, type, apiKey: "" });
+          const expiresAt =
+            typeof tokens.expiresIn === "number"
+              ? new Date(Date.now() + tokens.expiresIn * 1000).toISOString()
+              : undefined;
+          yield* repo.upsertTokens({
+            providerId: id,
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            expiresAt,
+          });
+        }),
+      ),
   );
 
   ipcMain.handle("providers:remove", (_event, id: string) =>
