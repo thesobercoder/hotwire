@@ -200,6 +200,35 @@ describe("pollForToken", () => {
     });
   });
 
+  it("tolerates null refresh_token and null expires_in in the token response", async () => {
+    const http = scriptedHttp([
+      {
+        access_token: "ACCESS-TOKEN",
+        refresh_token: null,
+        expires_in: null,
+      },
+    ]);
+
+    const result = await Effect.runPromise(
+      pollForToken(
+        {
+          clientId: "test-client",
+          deviceAuthUrl: "https://example.com/device/code",
+          tokenUrl: "https://example.com/token",
+          scopes: [],
+        },
+        "DEVICE-CODE",
+        0,
+      ).pipe(Effect.provide(http)),
+    );
+
+    expect(result).toEqual({
+      accessToken: "ACCESS-TOKEN",
+      refreshToken: undefined,
+      expiresIn: undefined,
+    });
+  });
+
   it("fails with DeviceFlowExpired on expired_token error", async () => {
     const http = scriptedHttp([{ error: "expired_token" }]);
 

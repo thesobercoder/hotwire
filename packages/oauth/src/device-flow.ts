@@ -52,10 +52,12 @@ export const TokenResponse = Schema.Struct({
 
 export type TokenResponse = typeof TokenResponse.Type;
 
+// Accept missing-field OR null-value for optional fields —
+// OAuth servers in the wild use both conventions.
 const TokenSuccessWire = Schema.Struct({
   access_token: Schema.String,
-  refresh_token: Schema.optional(Schema.String),
-  expires_in: Schema.optional(Schema.Number),
+  refresh_token: Schema.optional(Schema.NullOr(Schema.String)),
+  expires_in: Schema.optional(Schema.NullOr(Schema.Number)),
 });
 
 const TokenErrorWire = Schema.Struct({
@@ -129,10 +131,10 @@ export const pollForToken = (
           return yield* attempt(nextInterval);
         }
         if (code === "expired_token") {
-          return yield* Effect.fail(new DeviceFlowExpired());
+          return yield* Effect.fail(new DeviceFlowExpired({}));
         }
         if (code === "access_denied") {
-          return yield* Effect.fail(new DeviceFlowAccessDenied());
+          return yield* Effect.fail(new DeviceFlowAccessDenied({}));
         }
         return yield* Effect.fail(
           new DeviceFlowError({ cause: errorResult.right }),
@@ -144,8 +146,8 @@ export const pollForToken = (
       );
       return {
         accessToken: parsed.access_token,
-        refreshToken: parsed.refresh_token,
-        expiresIn: parsed.expires_in,
+        refreshToken: parsed.refresh_token ?? undefined,
+        expiresIn: parsed.expires_in ?? undefined,
       };
     });
 

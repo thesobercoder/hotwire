@@ -7,11 +7,12 @@ import type {
   DeviceFlowConfigDto,
   TokenResponseDto,
 } from "../../shared/types";
-import { deviceFlowRuntime } from "../runtime";
+import { appRuntime } from "../runtime";
 import { DeviceFlowClient } from "../services/device-flow-client";
 
 type Status =
   | { kind: "idle" }
+  | { kind: "starting" }
   | { kind: "pending"; code: DeviceCodeResponseDto }
   | { kind: "error"; message: string };
 
@@ -29,7 +30,9 @@ export function DeviceFlowCard({
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
   const handleConnect = () => {
-    void deviceFlowRuntime
+    if (status.kind !== "idle" && status.kind !== "error") return;
+    setStatus({ kind: "starting" });
+    void appRuntime
       .runPromise(
         Effect.gen(function* () {
           const client = yield* DeviceFlowClient;
@@ -39,7 +42,7 @@ export function DeviceFlowCard({
       )
       .then((code) => {
         setStatus({ kind: "pending", code });
-        void deviceFlowRuntime
+        void appRuntime
           .runPromise(
             Effect.gen(function* () {
               const client = yield* DeviceFlowClient;
@@ -69,7 +72,7 @@ export function DeviceFlowCard({
     url: string,
   ) => {
     event.preventDefault();
-    void deviceFlowRuntime.runPromise(
+    void appRuntime.runPromise(
       Effect.gen(function* () {
         const client = yield* DeviceFlowClient;
         yield* client.openUrl(url);
@@ -79,11 +82,13 @@ export function DeviceFlowCard({
 
   return (
     <article data-provider-type={providerType}>
-      {status.kind === "idle" ? (
+      {status.kind === "idle" || status.kind === "error" ? (
         <button type="button" onClick={handleConnect}>
           Connect
         </button>
       ) : null}
+
+      {status.kind === "starting" ? <p>Requesting device code…</p> : null}
 
       {status.kind === "pending" ? (
         <div>

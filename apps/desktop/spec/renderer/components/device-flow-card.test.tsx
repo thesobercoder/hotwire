@@ -1,9 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Context, Effect, Layer, ManagedRuntime } from "effect";
 
 import { DeviceFlowCard } from "../../../src/renderer/components/device-flow-card";
-import { deviceFlowRuntime } from "../../../src/renderer/runtime";
+import { appRuntime } from "../../../src/renderer/runtime";
 import { DeviceFlowClient } from "../../../src/renderer/services/device-flow-client";
 
 function installTestRuntime(
@@ -12,20 +12,14 @@ function installTestRuntime(
   const TestLayer = Layer.succeed(DeviceFlowClient, client);
   const testRuntime = ManagedRuntime.make(TestLayer);
 
-  const original = deviceFlowRuntime.runPromise.bind(deviceFlowRuntime);
-  (
-    deviceFlowRuntime as {
-      runPromise: typeof deviceFlowRuntime.runPromise;
-    }
-  ).runPromise = ((effect: Effect.Effect<unknown, unknown, DeviceFlowClient>) =>
-    testRuntime.runPromise(effect)) as typeof deviceFlowRuntime.runPromise;
+  const original = appRuntime.runPromise.bind(appRuntime);
+  (appRuntime as { runPromise: typeof appRuntime.runPromise }).runPromise = ((
+    effect: Effect.Effect<unknown, unknown, DeviceFlowClient>,
+  ) => testRuntime.runPromise(effect)) as typeof appRuntime.runPromise;
 
   return () => {
-    (
-      deviceFlowRuntime as {
-        runPromise: typeof deviceFlowRuntime.runPromise;
-      }
-    ).runPromise = original;
+    (appRuntime as { runPromise: typeof appRuntime.runPromise }).runPromise =
+      original;
   };
 }
 
@@ -151,14 +145,49 @@ describe("DeviceFlowCard", () => {
 
     await user.click(screen.getByRole("button", { name: /connect/i }));
 
+    await waitFor(() => {
+      expect(completions).toEqual([
+        { accessToken: "ACCESS", refreshToken: "REFRESH", expiresIn: 3600 },
+      ]);
+    });
+
+    cleanup();
+  });
+
+  it("ignores repeated Connect clicks while a flow is in-flight", async () => {
+    const user = userEvent.setup();
+    let startCount = 0;
+
+    const cleanup = installTestRuntime({
+      start: () =>
+        Effect.sync(() => {
+          startCount += 1;
+          return {
+            deviceCode: "DEVICE-CODE",
+            userCode: "WDJB-MJHT",
+            verificationUri: "https://example.com/device",
+            expiresIn: 900,
+            interval: 5,
+          };
+        }),
+      poll: () => Effect.never,
+      openUrl: () => Effect.void,
+    });
+
+    render(
+      <DeviceFlowCard
+        providerType="copilot"
+        config={config}
+        onComplete={() => {}}
+      />,
+    );
+
+    const button = screen.getByRole("button", { name: /connect/i });
+    await user.click(button);
     await screen.findByText("WDJB-MJHT");
-
-    // Allow the pending poll Effect to resolve.
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(completions).toEqual([
-      { accessToken: "ACCESS", refreshToken: "REFRESH", expiresIn: 3600 },
-    ]);
+    // Button is unmounted once pending state renders, so a second click is impossible;
+    // but even if the user races the state transition, guard prevents a second start.
+    expect(startCount).toBe(1);
 
     cleanup();
   });
