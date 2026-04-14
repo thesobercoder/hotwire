@@ -20,7 +20,7 @@ describe("initializeAppData", () => {
 
     expect(result.appDataPath).toBe(join(homeDir, ".hotwire"));
     expect(result.dbPath).toBe(join(homeDir, ".hotwire", "hotwire.db"));
-    expect(pragmaRows[0]?.user_version).toBe(3);
+    expect(pragmaRows[0]?.user_version).toBe(4);
     expect(stats.mode & 0o777).toBe(0o600);
 
     database.close();
@@ -43,12 +43,12 @@ describe("initializeAppData", () => {
     const pragmaRows = database.prepare("PRAGMA user_version").all() as Array<{
       user_version: number;
     }>;
-    expect(pragmaRows[0]?.user_version).toBe(3);
+    expect(pragmaRows[0]?.user_version).toBe(4);
 
     const migrationRows = database
       .prepare("SELECT version FROM schema_migrations ORDER BY version")
       .all() as Array<{ version: number }>;
-    expect(migrationRows.map((r) => r.version)).toEqual([1, 2, 3]);
+    expect(migrationRows.map((r) => r.version)).toEqual([1, 2, 3, 4]);
 
     database.close();
   });
@@ -79,12 +79,12 @@ describe("initializeAppData", () => {
     const pragmaRows = database.prepare("PRAGMA user_version").all() as Array<{
       user_version: number;
     }>;
-    expect(pragmaRows[0]?.user_version).toBe(3);
+    expect(pragmaRows[0]?.user_version).toBe(4);
 
     const migrationRows = database
       .prepare("SELECT version FROM schema_migrations ORDER BY version")
       .all() as Array<{ version: number }>;
-    expect(migrationRows.map((r) => r.version)).toEqual([1, 2, 3]);
+    expect(migrationRows.map((r) => r.version)).toEqual([1, 2, 3, 4]);
 
     database.close();
   });
@@ -120,7 +120,144 @@ describe("initializeAppData", () => {
     const pragmaRows = database.prepare("PRAGMA user_version").all() as Array<{
       user_version: number;
     }>;
-    expect(pragmaRows[0]?.user_version).toBe(3);
+    expect(pragmaRows[0]?.user_version).toBe(4);
+
+    database.close();
+  });
+
+  it("creates message and part tables in migration 4 with opencode-shaped columns", () => {
+    const homeDir = mkdtempSync(join(tmpdir(), "hotwire-app-data-"));
+
+    const result = Effect.runSync(initializeAppData({ homeDir }));
+    const database = new DatabaseSync(result.dbPath);
+
+    const tables = database
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('message', 'part') ORDER BY name",
+      )
+      .all() as Array<{ name: string }>;
+
+    expect(tables.map((t) => t.name)).toEqual(["message", "part"]);
+
+    const messageColumns = database
+      .prepare("PRAGMA table_info(message)")
+      .all() as Array<{ name: string; notnull: number; pk: number }>;
+    const messageMap = new Map(messageColumns.map((c) => [c.name, c]));
+    expect(messageMap.get("id")?.pk).toBe(1);
+    expect(messageMap.get("session_id")?.notnull).toBe(1);
+    expect(messageMap.get("data")?.notnull).toBe(1);
+    expect(messageMap.get("time_created")?.notnull).toBe(1);
+    expect(messageMap.get("time_updated")?.notnull).toBe(1);
+
+    const partColumns = database
+      .prepare("PRAGMA table_info(part)")
+      .all() as Array<{ name: string; notnull: number; pk: number }>;
+    const partMap = new Map(partColumns.map((c) => [c.name, c]));
+    expect(partMap.get("id")?.pk).toBe(1);
+    expect(partMap.get("message_id")?.notnull).toBe(1);
+    expect(partMap.get("session_id")?.notnull).toBe(1);
+    expect(partMap.get("data")?.notnull).toBe(1);
+    expect(partMap.get("time_created")?.notnull).toBe(1);
+    expect(partMap.get("time_updated")?.notnull).toBe(1);
+
+    const migrationRows = database
+      .prepare("SELECT version FROM schema_migrations ORDER BY version")
+      .all() as Array<{ version: number }>;
+    expect(migrationRows.map((r) => r.version)).toEqual([1, 2, 3, 4]);
+
+    database.close();
+  });
+
+  it("accepts ULID primary keys for message and part rows", () => {
+    const homeDir = mkdtempSync(join(tmpdir(), "hotwire-app-data-"));
+
+    const result = Effect.runSync(initializeAppData({ homeDir }));
+    const database = new DatabaseSync(result.dbPath);
+    database.exec("PRAGMA foreign_keys = ON");
+
+    const sessionId = "01JTEST000000000000000SS1";
+    const messageId = "01JTEST000000000000000MS1";
+    const partId = "01JTEST000000000000000PT1";
+    const now = Date.now();
+
+    database
+      .prepare(
+        "INSERT INTO message (id, session_id, data, time_created, time_updated) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run(
+        messageId,
+        sessionId,
+        JSON.stringify({ role: "user", time: { created: now } }),
+        now,
+        now,
+      );
+
+    database
+      .prepare(
+        "INSERT INTO part (id, message_id, session_id, data, time_created, time_updated) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run(
+        partId,
+        messageId,
+        sessionId,
+        JSON.stringify({ type: "text", text: "hi" }),
+        now,
+        now,
+      );
+
+    const messageRow = database
+      .prepare("SELECT id, session_id, data FROM message WHERE id = ?")
+      .get(messageId) as { id: string; session_id: string; data: string };
+    const partRow = database
+      .prepare("SELECT id, message_id, session_id, data FROM part WHERE id = ?")
+      .get(partId) as {
+      id: string;
+      message_id: string;
+      session_id: string;
+      data: string;
+    };
+
+    expect(messageRow.id).toBe(messageId);
+    expect(messageRow.session_id).toBe(sessionId);
+    expect(JSON.parse(messageRow.data).role).toBe("user");
+    expect(partRow.id).toBe(partId);
+    expect(partRow.message_id).toBe(messageId);
+    expect(partRow.session_id).toBe(sessionId);
+    expect(JSON.parse(partRow.data).type).toBe("text");
+
+    database.close();
+  });
+
+  it("cascades part deletion when its parent message is removed", () => {
+    const homeDir = mkdtempSync(join(tmpdir(), "hotwire-app-data-"));
+
+    const result = Effect.runSync(initializeAppData({ homeDir }));
+    const database = new DatabaseSync(result.dbPath);
+    database.exec("PRAGMA foreign_keys = ON");
+
+    const sessionId = "01JTEST000000000000000SS1";
+    const messageId = "01JTEST000000000000000MS1";
+    const partId = "01JTEST000000000000000PT1";
+    const now = Date.now();
+
+    database
+      .prepare(
+        "INSERT INTO message (id, session_id, data, time_created, time_updated) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run(messageId, sessionId, JSON.stringify({}), now, now);
+
+    database
+      .prepare(
+        "INSERT INTO part (id, message_id, session_id, data, time_created, time_updated) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run(partId, messageId, sessionId, JSON.stringify({}), now, now);
+
+    database.prepare("DELETE FROM message WHERE id = ?").run(messageId);
+
+    const remaining = database
+      .prepare("SELECT COUNT(*) AS count FROM part WHERE id = ?")
+      .get(partId) as { count: number };
+    expect(remaining.count).toBe(0);
 
     database.close();
   });
@@ -139,7 +276,7 @@ describe("initializeAppData", () => {
       .all() as Array<{ migration_count: number }>;
 
     expect(secondRun).toEqual(firstRun);
-    expect(migrationRows[0]?.migration_count).toBe(3);
+    expect(migrationRows[0]?.migration_count).toBe(4);
     expect(stats.mode & 0o777).toBe(0o600);
 
     database.close();
