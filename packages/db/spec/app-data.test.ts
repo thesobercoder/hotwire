@@ -20,7 +20,7 @@ describe("initializeAppData", () => {
 
     expect(result.appDataPath).toBe(join(homeDir, ".hotwire"));
     expect(result.dbPath).toBe(join(homeDir, ".hotwire", "hotwire.db"));
-    expect(pragmaRows[0]?.user_version).toBe(2);
+    expect(pragmaRows[0]?.user_version).toBe(3);
     expect(stats.mode & 0o777).toBe(0o600);
 
     database.close();
@@ -43,12 +43,48 @@ describe("initializeAppData", () => {
     const pragmaRows = database.prepare("PRAGMA user_version").all() as Array<{
       user_version: number;
     }>;
-    expect(pragmaRows[0]?.user_version).toBe(2);
+    expect(pragmaRows[0]?.user_version).toBe(3);
 
     const migrationRows = database
       .prepare("SELECT version FROM schema_migrations ORDER BY version")
       .all() as Array<{ version: number }>;
-    expect(migrationRows.map((r) => r.version)).toEqual([1, 2]);
+    expect(migrationRows.map((r) => r.version)).toEqual([1, 2, 3]);
+
+    database.close();
+  });
+
+  it("creates provider_tokens table in migration 3", () => {
+    const homeDir = mkdtempSync(join(tmpdir(), "hotwire-app-data-"));
+
+    const result = Effect.runSync(initializeAppData({ homeDir }));
+    const database = new DatabaseSync(result.dbPath);
+
+    const tables = database
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('provider_tokens') ORDER BY name",
+      )
+      .all() as Array<{ name: string }>;
+
+    expect(tables.map((t) => t.name)).toEqual(["provider_tokens"]);
+
+    const columns = database
+      .prepare("PRAGMA table_info(provider_tokens)")
+      .all() as Array<{ name: string; notnull: number }>;
+    const columnMap = new Map(columns.map((c) => [c.name, c.notnull]));
+    expect(columnMap.get("provider_id")).toBe(1);
+    expect(columnMap.get("access_token")).toBe(1);
+    expect(columnMap.has("refresh_token")).toBe(true);
+    expect(columnMap.has("expires_at")).toBe(true);
+
+    const pragmaRows = database.prepare("PRAGMA user_version").all() as Array<{
+      user_version: number;
+    }>;
+    expect(pragmaRows[0]?.user_version).toBe(3);
+
+    const migrationRows = database
+      .prepare("SELECT version FROM schema_migrations ORDER BY version")
+      .all() as Array<{ version: number }>;
+    expect(migrationRows.map((r) => r.version)).toEqual([1, 2, 3]);
 
     database.close();
   });
@@ -84,7 +120,7 @@ describe("initializeAppData", () => {
     const pragmaRows = database.prepare("PRAGMA user_version").all() as Array<{
       user_version: number;
     }>;
-    expect(pragmaRows[0]?.user_version).toBe(2);
+    expect(pragmaRows[0]?.user_version).toBe(3);
 
     database.close();
   });
@@ -103,7 +139,7 @@ describe("initializeAppData", () => {
       .all() as Array<{ migration_count: number }>;
 
     expect(secondRun).toEqual(firstRun);
-    expect(migrationRows[0]?.migration_count).toBe(2);
+    expect(migrationRows[0]?.migration_count).toBe(3);
     expect(stats.mode & 0o777).toBe(0o600);
 
     database.close();

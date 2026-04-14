@@ -279,6 +279,152 @@ describe("ProviderRepo", () => {
     db.close();
   });
 
+  it("upserts and retrieves OAuth tokens for a provider", () => {
+    const { layer, db } = createTestLayer();
+
+    run(
+      layer,
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        yield* repo.insert({
+          id: "01JTEST000000000000000001",
+          type: "copilot",
+          apiKey: "",
+        });
+        yield* repo.upsertTokens({
+          providerId: "01JTEST000000000000000001",
+          accessToken: "access-xyz",
+          refreshToken: "refresh-abc",
+          expiresAt: "2026-05-01T00:00:00Z",
+        });
+
+        const tokens = yield* repo.getTokens("01JTEST000000000000000001");
+        expect(tokens).toEqual({
+          providerId: "01JTEST000000000000000001",
+          accessToken: "access-xyz",
+          refreshToken: "refresh-abc",
+          expiresAt: "2026-05-01T00:00:00Z",
+        });
+      }),
+    );
+
+    db.close();
+  });
+
+  it("returns null getTokens when no tokens exist for the provider", () => {
+    const { layer, db } = createTestLayer();
+
+    run(
+      layer,
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        yield* repo.insert({
+          id: "01JTEST000000000000000001",
+          type: "copilot",
+          apiKey: "",
+        });
+
+        const tokens = yield* repo.getTokens("01JTEST000000000000000001");
+        expect(tokens).toBeNull();
+      }),
+    );
+
+    db.close();
+  });
+
+  it("updates tokens in place when upsertTokens is called twice", () => {
+    const { layer, db } = createTestLayer();
+
+    run(
+      layer,
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        yield* repo.insert({
+          id: "01JTEST000000000000000001",
+          type: "copilot",
+          apiKey: "",
+        });
+
+        yield* repo.upsertTokens({
+          providerId: "01JTEST000000000000000001",
+          accessToken: "access-first",
+        });
+        yield* repo.upsertTokens({
+          providerId: "01JTEST000000000000000001",
+          accessToken: "access-second",
+          refreshToken: "refresh-second",
+        });
+
+        const tokens = yield* repo.getTokens("01JTEST000000000000000001");
+        expect(tokens?.accessToken).toBe("access-second");
+        expect(tokens?.refreshToken).toBe("refresh-second");
+      }),
+    );
+
+    db.close();
+  });
+
+  it("cascades token deletion when provider is removed", () => {
+    const { layer, db } = createTestLayer();
+
+    run(
+      layer,
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        yield* repo.insert({
+          id: "01JTEST000000000000000001",
+          type: "copilot",
+          apiKey: "",
+        });
+        yield* repo.upsertTokens({
+          providerId: "01JTEST000000000000000001",
+          accessToken: "access-xyz",
+        });
+
+        yield* repo.remove("01JTEST000000000000000001");
+
+        const tokens = yield* repo.getTokens("01JTEST000000000000000001");
+        expect(tokens).toBeNull();
+      }),
+    );
+
+    db.close();
+  });
+
+  it("re-enforces 0600 file mode after token upsert", () => {
+    const { layer, db, dbPath } = createTestLayer();
+
+    run(
+      layer,
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        yield* repo.insert({
+          id: "01JTEST000000000000000001",
+          type: "copilot",
+          apiKey: "",
+        });
+      }),
+    );
+
+    chmodSync(dbPath, 0o644);
+
+    run(
+      layer,
+      Effect.gen(function* () {
+        const repo = yield* ProviderRepo;
+        yield* repo.upsertTokens({
+          providerId: "01JTEST000000000000000001",
+          accessToken: "access-xyz",
+        });
+      }),
+    );
+
+    const stats = statSync(dbPath);
+    expect(stats.mode & 0o777).toBe(0o600);
+
+    db.close();
+  });
+
   it("re-enforces 0600 file mode after credential remove", () => {
     const { layer, db, dbPath } = createTestLayer();
 

@@ -18,6 +18,12 @@ const hotwireApi: HotwireApi = {
         enabled,
       ),
   },
+  deviceFlow: {
+    start: (config) => ipcRenderer.invoke("deviceFlow:start", config),
+    poll: (config, deviceCode, interval) =>
+      ipcRenderer.invoke("deviceFlow:poll", config, deviceCode, interval),
+    openUrl: (url) => ipcRenderer.invoke("deviceFlow:openUrl", url),
+  },
 };
 
 contextBridge.exposeInMainWorld("hotwire", hotwireApi);

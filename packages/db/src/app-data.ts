@@ -8,7 +8,7 @@ import { DatabaseError } from "./providers.js";
 
 const APP_DIRECTORY_NAME = ".hotwire";
 const DATABASE_FILE_NAME = "hotwire.db";
-const CURRENT_SCHEMA_VERSION = 2;
+const CURRENT_SCHEMA_VERSION = 3;
 
 export const initializeAppData = ({
   homeDir,
@@ -62,6 +62,22 @@ export const initializeAppData = ({
           );
 
           INSERT OR IGNORE INTO schema_migrations(version) VALUES (2);
+        `);
+      }
+
+      if (currentVersion < 3) {
+        database.exec(`
+          PRAGMA foreign_keys = ON;
+
+          CREATE TABLE IF NOT EXISTS provider_tokens (
+            provider_id TEXT NOT NULL PRIMARY KEY,
+            access_token TEXT NOT NULL,
+            refresh_token TEXT,
+            expires_at TEXT,
+            FOREIGN KEY (provider_id) REFERENCES providers(id) ON DELETE CASCADE
+          );
+
+          INSERT OR IGNORE INTO schema_migrations(version) VALUES (3);
         `);
       }
 

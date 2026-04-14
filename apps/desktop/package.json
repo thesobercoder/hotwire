@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@hotwire/db": "workspace:*",
+    "@hotwire/oauth": "workspace:*",
     "@tanstack/react-router": "catalog:",
     "effect": "catalog:",
     "react": "catalog:",

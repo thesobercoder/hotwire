@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { Effect, Layer } from "effect";
 import { ulid } from "ulidx";
 
@@ -11,6 +11,13 @@ import {
   ProviderRepo,
   ProviderRepoLive,
 } from "@hotwire/db";
+import {
+  pollForToken,
+  requestDeviceCode,
+  type DeviceFlowConfig,
+} from "@hotwire/oauth";
+
+import { DeviceFlowHttpLive } from "./device-flow.js";
 
 const rendererUrl = process.env.HOTWIRE_RENDERER_URL;
 const preloadPath = new URL("./preload.mjs", import.meta.url).pathname;
@@ -110,6 +117,28 @@ function registerProviderHandlers(
   );
 }
 
+function registerDeviceFlowHandlers() {
+  ipcMain.handle("deviceFlow:start", (_event, config: DeviceFlowConfig) =>
+    Effect.runPromise(
+      requestDeviceCode(config).pipe(Effect.provide(DeviceFlowHttpLive)),
+    ),
+  );
+
+  ipcMain.handle(
+    "deviceFlow:poll",
+    (_event, config: DeviceFlowConfig, deviceCode: string, interval: number) =>
+      Effect.runPromise(
+        pollForToken(config, deviceCode, interval).pipe(
+          Effect.provide(DeviceFlowHttpLive),
+        ),
+      ),
+  );
+
+  ipcMain.handle("deviceFlow:openUrl", (_event, url: string) =>
+    shell.openExternal(url),
+  );
+}
+
 app.whenReady().then(() => {
   const { dbPath } = Effect.runSync(
     initializeAppData({
@@ -130,6 +159,7 @@ app.whenReady().then(() => {
     Effect.runSync(Effect.provide(effect, AppLayer));
 
   registerProviderHandlers(runSync);
+  registerDeviceFlowHandlers();
 
   createMainWindow();
 

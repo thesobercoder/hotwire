@@ -9,6 +9,37 @@ export const Provider = Schema.Struct({
 
 export type Provider = typeof Provider.Type;
 
+export type DeviceFlowConfigDto = {
+  clientId: string;
+  deviceAuthUrl: string;
+  tokenUrl: string;
+  scopes: string[];
+};
+
+export type DeviceCodeResponseDto = {
+  deviceCode: string;
+  userCode: string;
+  verificationUri: string;
+  expiresIn: number;
+  interval: number;
+};
+
+export type TokenResponseDto = {
+  accessToken: string;
+  refreshToken?: string;
+  expiresIn?: number;
+};
+
+export type DeviceFlowApi = {
+  start(config: DeviceFlowConfigDto): Promise<DeviceCodeResponseDto>;
+  poll(
+    config: DeviceFlowConfigDto,
+    deviceCode: string,
+    interval: number,
+  ): Promise<TokenResponseDto>;
+  openUrl(url: string): Promise<void>;
+};
+
 export const ProviderModel = Schema.Struct({
   providerId: Schema.String,
   modelId: Schema.String,
@@ -32,4 +63,5 @@ export type ProvidersApi = {
 
 export type HotwireApi = {
   providers: ProvidersApi;
+  deviceFlow: DeviceFlowApi;
 };

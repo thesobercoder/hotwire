@@ -25,6 +25,15 @@ export const ProviderModel = Schema.Struct({
 
 export type ProviderModel = typeof ProviderModel.Type;
 
+export const ProviderTokens = Schema.Struct({
+  providerId: Schema.String,
+  accessToken: Schema.String,
+  refreshToken: Schema.NullOr(Schema.String),
+  expiresAt: Schema.NullOr(Schema.String),
+});
+
+export type ProviderTokens = typeof ProviderTokens.Type;
+
 export class ProviderRepo extends Context.Tag("@hotwire/db/ProviderRepo")<
   ProviderRepo,
   {
@@ -44,6 +53,15 @@ export class ProviderRepo extends Context.Tag("@hotwire/db/ProviderRepo")<
     readonly listModels: (
       providerId: string,
     ) => Effect.Effect<ProviderModel[], DatabaseError>;
+    readonly upsertTokens: (params: {
+      providerId: string;
+      accessToken: string;
+      refreshToken?: string;
+      expiresAt?: string;
+    }) => Effect.Effect<void, DatabaseError>;
+    readonly getTokens: (
+      providerId: string,
+    ) => Effect.Effect<ProviderTokens | null, DatabaseError>;
   }
 >() {}
 
@@ -139,6 +157,54 @@ export const ProviderRepoLive = Layer.effect(
               modelId: row.model_id,
               enabled: row.enabled === 1,
             }));
+          },
+          catch: (cause) => new DatabaseError({ cause }),
+        }),
+
+      upsertTokens: ({ providerId, accessToken, refreshToken, expiresAt }) =>
+        Effect.try({
+          try: () => {
+            db.prepare(
+              `INSERT INTO provider_tokens (provider_id, access_token, refresh_token, expires_at)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT (provider_id)
+               DO UPDATE SET
+                 access_token = excluded.access_token,
+                 refresh_token = excluded.refresh_token,
+                 expires_at = excluded.expires_at`,
+            ).run(
+              providerId,
+              accessToken,
+              refreshToken ?? null,
+              expiresAt ?? null,
+            );
+            enforceDbFileMode(dbFilePath);
+          },
+          catch: (cause) => new DatabaseError({ cause }),
+        }),
+
+      getTokens: (providerId) =>
+        Effect.try({
+          try: () => {
+            const row = db
+              .prepare(
+                "SELECT provider_id, access_token, refresh_token, expires_at FROM provider_tokens WHERE provider_id = ?",
+              )
+              .get(providerId) as
+              | {
+                  provider_id: string;
+                  access_token: string;
+                  refresh_token: string | null;
+                  expires_at: string | null;
+                }
+              | undefined;
+            if (!row) return null;
+            return {
+              providerId: row.provider_id,
+              accessToken: row.access_token,
+              refreshToken: row.refresh_token,
+              expiresAt: row.expires_at,
+            };
           },
           catch: (cause) => new DatabaseError({ cause }),
         }),

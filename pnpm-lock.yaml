@@ -116,6 +116,9 @@ importers:
       '@hotwire/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@hotwire/oauth':
+        specifier: workspace:*
+        version: link:../../packages/oauth
       '@tanstack/react-router':
         specifier: 'catalog:'
         version: 1.168.18(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -173,6 +176,19 @@ importers:
         version: 4.1.4(@types/node@22.19.17)(jsdom@29.0.2)(vite@8.0.8(@types/node@22.19.17)(esbuild@0.28.0)(jiti@2.6.1)(tsx@4.21.0))
 
   packages/db:
+    dependencies:
+      effect:
+        specifier: 'catalog:'
+        version: 3.21.0
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.19.17
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@22.19.17)(jsdom@29.0.2)(vite@8.0.8(@types/node@22.19.17)(esbuild@0.28.0)(jiti@2.6.1)(tsx@4.21.0))
+
+  packages/oauth:
     dependencies:
       effect:
         specifier: 'catalog:'

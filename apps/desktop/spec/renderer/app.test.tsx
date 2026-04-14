@@ -16,6 +16,17 @@ function stubHotwireApi(overrides: Partial<Window["hotwire"]> = {}) {
       listModels: async () => [],
       setModelEnabled: async () => {},
     },
+    deviceFlow: {
+      start: async () => ({
+        deviceCode: "",
+        userCode: "",
+        verificationUri: "",
+        expiresIn: 0,
+        interval: 0,
+      }),
+      poll: async () => ({ accessToken: "" }),
+      openUrl: async () => {},
+    },
     ...overrides,
   };
 }
